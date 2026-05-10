@@ -342,7 +342,8 @@ export async function readProjectFile(projectsRoot, projectId, name, metadata?) 
   const file = await resolveSafeReal(dir, name);
   const buf = await readFile(file);
   const st = await stat(file);
-  const rel = toProjectPath(path.relative(dir, file));
+  const rootReal = await realpath(dir).catch(() => dir);
+  const rel = toProjectPath(path.relative(rootReal, file));
   const manifest = await readManifestForPath(dir, rel);
   return {
     buffer: buf,
@@ -430,7 +431,7 @@ export async function deleteProjectFile(projectsRoot, projectId, name, metadata?
 }
 
 export async function renameProjectFile(projectsRoot, projectId, fromName, toName, metadata?) {
-  const dir = resolveProjectDir(projectsRoot, projectId, metadata);
+  const dir = await ensureProject(projectsRoot, projectId, metadata);
   const oldName = validateProjectPath(fromName);
   const newName = sanitizePath(toName);
   const source = await resolveSafeReal(dir, oldName);

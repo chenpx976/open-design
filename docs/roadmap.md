@@ -26,7 +26,7 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
 
 ## Phase 1 — MVP (~6–8 weeks)
 
-**Goal:** a single developer can clone, install, start the daemon, point at Claude Code, and produce a prototype and a deck from scratch. The tool is usable for real work even if not polished.
+**Goal:** a single developer can clone, install, start the daemon-hosted Pi runtime, and produce a prototype and a deck from scratch. The tool is usable for real work even if not polished.
 
 ### Scope
 
@@ -37,14 +37,14 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
   - **no** comment mode yet · **no** sliders yet · **no** template gallery UI yet
 - Local daemon (Node)
   - HTTP/SSE API on `:7456`
-  - agent detection + cached results
+  - embedded Pi SDK runtime + cached model registry
   - skill registry (scan three dirs, hot-reload)
   - artifact store (plain files + `history.jsonl`)
   - design-system resolver
   - export pipeline (HTML + ZIP only; PDF/PPTX in Phase 2)
-- Agent adapters
-  - **`claude-code`** — native skill loading, streaming, surgical edit
-  - **`api-fallback`** — direct Anthropic Messages API, minimal tool loop (Read/Write/Edit only)
+- Agent runtime
+  - **`pi`** — daemon-hosted Pi SDK, streaming thinking/tool/result events, bounded `ProjectFs`
+  - **`api-fallback` / BYOK proxy** — provider proxy path for OpenAI-compatible, Anthropic, Azure OpenAI, and Gemini endpoints
 - Skills shipped in repo
   - `saas-landing` (Prototype)
   - `magazine-web-ppt` (Deck, fork of guizang-ppt-skill)
@@ -58,13 +58,13 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
   - **C — Vercel + direct API** (partial; no daemon features)
 
 **Explicitly out of MVP:**
-- Codex / Cursor / Gemini adapters
+- legacy local-agent adapter layer
 - Comment mode + sliders
 - Template gallery + template skill
 - Design System from screenshot (vision) / PDF / URL
 - PDF / PPTX export
 - Topology B (Vercel + tunneled local daemon)
-- Docker compose file
+- Docker Compose cluster profile beyond the development smoke
 - Skill tests (`od skill test`)
 - Auth / multi-user
 
@@ -74,8 +74,8 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
 |---|---|---|
 | 1 | Scaffolding | pnpm workspaces (`apps/web`, `apps/daemon`, `e2e`); Next.js 16 base; daemon CLI skeleton; CI green |
 | 2 | Daemon core | HTTP/SSE API; project/conversation store; skill registry scanning; artifact store; design-system resolver loading `DESIGN.md` |
-| 3 | Claude Code adapter | detection (PATH + `~/.claude/` probe); spawn with `--output-format stream-json`; parser from JSON-lines → `AgentEvent`; streaming to daemon's session; cancel via SIGTERM |
-| 4 | API-fallback adapter | Anthropic Messages streaming; minimal tool loop (Read/Write/Edit rooted to artifact cwd); integration with skill prompt injection |
+| 3 | Pi runtime | embed Pi SDK behind `AgentRuntime`; stream text, thinking, tool calls, and tool results; keep file access behind `ProjectFs`; cancel active runs |
+| 4 | BYOK proxy | provider streaming through the daemon; model/test settings; SSRF-safe base URL validation; integration with skill prompt injection |
 | 5 | Web UI — chat + file workspace | React state + daemon-backed project store; SSE client; chat pane; file workspace reflects project files; skill picker |
 | 6 | Web UI — preview + export | sandboxed iframe with hot reload; JSX → vendored React/Babel runtime; export ZIP; export self-contained HTML (inline CSS) |
 | 7 | Default skills | port `guizang-ppt-skill` (no modifications; add `od:` extension block); write `saas-landing` skill; write 1–2 DESIGN.md examples; docs for skill authors |
@@ -84,8 +84,8 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
 ### MVP exit criteria
 
 1. `corepack enable && pnpm install && pnpm tools-dev run web` works on clean macOS and Linux with Node 24.
-2. With Claude Code installed: prototype + deck generation works end-to-end.
-3. Without Claude Code installed: API-fallback produces prototypes (not decks — guizang-ppt-skill needs native skill loading).
+2. With Pi credentials configured: prototype + deck generation works end-to-end.
+3. Without Pi credentials configured: BYOK proxy mode can still produce prototypes through configured providers.
 4. A user can drop a DESIGN.md into the project root and subsequent generations respect it.
 5. A third party can publish a skill repo; `od skill add <url>` installs it and it works.
 6. Artifacts are plain files; `git add ./.od/artifacts/` and `git log` tell a sensible story.
@@ -99,11 +99,10 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
 
 ### Scope
 
-**Agent adapters:**
-- `codex` (P1)
-- `cursor-agent` (P1)
-- capability-driven UI gating (disable features per adapter)
-- agent fallback chain
+**Agent runtime:**
+- worker-backed `AgentRuntime` mode with Redis queue and Postgres run/event store
+- deterministic Pi-compatible fake runtime for development and E2E smoke tests
+- capability-driven UI gating for Pi/BYOK surfaces
 
 **UI:**
 - **Comment mode** (click element → surgical edit; only when `capabilities.surgicalEdit`)
@@ -127,7 +126,7 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
 - PPTX (pptxgenjs, driven by `slides.json`)
 
 **Deployment:**
-- Docker compose file
+- Docker Compose cluster profile with API + worker + Redis + Postgres
 - Topology B: Vercel web + tunneled local daemon
   - Ship a helper subcommand: `od daemon --expose` using `cloudflared` (opt-in, documented)
 
@@ -138,7 +137,7 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
 ### v1 exit criteria
 
 1. All four modes fully functional.
-2. Three adapters working (Claude Code, Codex, Cursor Agent); fallback chain shipping.
+2. Pi runtime works inline and through workers; BYOK proxy remains available.
 3. PDF + PPTX export working for at least the `magazine-web-ppt` + `pitch-deck` skills.
 4. Deployed example at `demo.open-design.dev` (Topology C).
 5. Skill author docs published; at least one third-party skill submitted.
@@ -153,7 +152,7 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
 **Scope sketch (non-binding):**
 - Skill marketplace UI — searchable, categorized, install with one click
 - Skill signing / checksums
-- Gemini CLI + OpenCode + OpenClaw adapters (P2 tier)
+- remote filesystem providers for cluster workers, starting with GitHub-backed or fs-like adapters
 - Windows support
 - Collaborative mode (multi-user session on a single daemon)
 - "Freeze prototype as design system" action
@@ -169,13 +168,13 @@ v2 isn't promised. It's the direction if v1 lands.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Claude Code JSON stream format changes between versions | adapter breaks | pin version range; write a compatibility test; keep a parser for each major release |
-| Third-party agent CLIs don't expose enough to stream tool calls | UX degrades silently | capability flags + feature gates; document per-adapter limitations in-product |
+| Pi SDK event format changes between versions | runtime stream breaks | pin version range; keep deterministic compatibility tests for text/thinking/tool/result events |
+| Worker queue or run store drifts from inline behavior | local and cluster UX diverge | exercise both paths in E2E smoke tests with the same fake Pi runtime |
 | `@mariozechner/pi-ai` or similar abstractions get popular and contributors ask us to support them | scope creep | defer; if demand is real, add as yet-another-adapter next to `api-fallback` |
 | Vercel deploy (Topology B) flaky because of tunnel setup | users can't try the cloud path | ship Topology C (direct API) as the always-works path; document Topology B as advanced |
 | `guizang-ppt-skill` or similar upstream skill changes format | default deck skill breaks | pin git SHA in our default install; monitor upstream |
 | DESIGN.md format evolves in awesome-claude-design | incompatibility | track upstream; adopt changes; our resolver is tolerant of missing sections |
-| Anthropic ships an open-source Claude Design | differentiation collapses | our moat is the "uses user's existing agent" angle; Anthropic is unlikely to ship that |
+| Anthropic ships an open-source Claude Design | differentiation collapses | our moat is local-first, BYOK, deployable Pi worker clusters, and open skills/design-system files |
 | Skill security (malicious skill via `od skill add`) | user machine compromise | install-time warning; rely on agent's own permission model; document best practices |
 
 ---
@@ -187,7 +186,7 @@ Record one line per material decision as we go. Example entries:
 - 2026-04-24 — Use plain files + `history.jsonl` over SQLite for artifacts. *Why:* git-reviewable, no driver dependency, matches "skills are files" ethos.
 - 2026-04-24 — Adopt `DESIGN.md` (awesome-claude-design) verbatim rather than inventing a new format. *Why:* 68 existing files are immediately compatible.
 - 2026-04-24 — Do not ship an Electron / Tauri wrapper. *Why:* every minute on code-signing is a minute not on skills; `cc-switch` already solves the tray-icon use case.
-- 2026-04-24 — Delegate the entire agent loop to the user's CLI. *Why:* reimplementing is worse than integrating; ecosystem compatibility beats control.
+- 2026-05-10 — Host Pi SDK inside the Node.js daemon and worker runtime instead of detecting local coding-agent CLIs. *Why:* cluster deployment needs an explicit server-side runtime, deterministic E2E tests, and consistent Pi thinking/tool/result events.
 
 Decisions supersede each other; keep the log append-only and date every entry.
 

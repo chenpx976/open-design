@@ -45,6 +45,7 @@ export default defineConfig({
   webServer: {
     command:
       `OD_DATA_DIR=${shellQuote(dataDir)} ` +
+      `OD_E2E_FAKE_PI_AGENT=1 ` +
       `pnpm --dir .. tools-dev run web --namespace ${shellQuote(namespace)} --daemon-port ${daemonPort} --web-port ${webPort}`,
     url: baseURL,
     reuseExistingServer: false,

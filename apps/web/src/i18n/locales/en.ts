@@ -61,11 +61,11 @@ export const en: Dict = {
   'settings.codeAgent': 'Code agent',
   'settings.codeAgentHint':
     'Powered by Pi inside the Node.js daemon. Pick the model Pi should use for generations.',
-  'settings.rescan': '↻ Rescan',
-  'settings.rescanTitle': 'Refresh agent catalog',
-  'settings.rescanRunning': 'Scanning...',
-  'settings.rescanSuccess': 'Scan complete. {count} available.',
-  'settings.rescanFailed': 'Scan failed. Check the daemon and try again.',
+  'settings.rescan': '↻ Refresh',
+  'settings.rescanTitle': 'Refresh Pi runtime status',
+  'settings.rescanRunning': 'Refreshing...',
+  'settings.rescanSuccess': 'Refresh complete. {count} embedded agents available.',
+  'settings.rescanFailed': 'Refresh failed. Check the daemon and try again.',
   'settings.test': 'Test',
   'settings.testTitle': 'Send a tiny test prompt to verify the connection',
   'settings.testRunning': 'Testing connection…',
@@ -87,11 +87,11 @@ export const en: Dict = {
   'settings.agentInstall.docs': 'Docs',
   'settings.agentInstall.pathHint':
     'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
-  'settings.agentInstall.stepOpenLinks': 'Open Install or Docs for your preferred agent.',
+  'settings.agentInstall.stepOpenLinks': 'Open Docs for the Pi runtime if credentials need setup.',
   'settings.agentInstall.stepAuth':
     'Configure Pi credentials through ~/.pi/agent, Pi OAuth, or provider environment variables before returning to Open Design.',
-  'settings.agentInstall.stepRescan': 'Click Rescan in this section.',
-  'settings.agentInstall.stepSelect': 'Select the agent card once it appears as installed.',
+  'settings.agentInstall.stepRescan': 'Click Refresh in this section.',
+  'settings.agentInstall.stepSelect': 'Select the Pi agent card once it becomes available.',
   'settings.noAgentsDetected':
     'Pi SDK is not available in this daemon build. Reinstall dependencies, then refresh.',
   'settings.apiSection': 'Anthropic API',
@@ -141,10 +141,10 @@ export const en: Dict = {
   'settings.reasoningPicker': 'Reasoning effort',
   'settings.modelPickerHint':
     'Fetched from Pi when credentials are available. "Default" leaves the choice to Pi settings; "Custom…" lets you type any Pi model pattern.',
-  'settings.cliEnvTitle': 'CLI config locations',
+  'settings.cliEnvTitle': 'Runtime config locations',
   'settings.cliEnvHint':
-    'Set non-secret config directories for packaged app runs and agent detection.',
-  'settings.cliEnvClaudeConfigDir': 'Claude Code config directory',
+    'Optional non-secret paths still honored by packaged app runs and MCP integrations.',
+  'settings.cliEnvClaudeConfigDir': 'Claude-compatible config directory',
   'settings.cliEnvCodexHome': 'Codex home',
   'settings.cliEnvCodexBin': 'Codex executable path',
   'settings.modelCustom': 'Custom (type below)…',

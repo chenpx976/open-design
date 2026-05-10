@@ -1267,7 +1267,7 @@ export function ProjectView({
 
       if (config.mode === 'daemon') {
         if (!config.agentId) {
-          handlers.onError(new Error('Pick a local agent first (top bar).'));
+          handlers.onError(new Error('Pick the Pi agent first (top bar).'));
           return;
         }
         const choice = selectedAgentChoice;

@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   createAgentRuntimeFromEnv,
   createQueuedAgentRuntime,
   createSqliteWorkerAgentRuntime,
   type AgentRuntime,
 } from '../src/agent-runtime.js';
+import { createLocalProjectFs } from '../src/project-fs.js';
 
 describe('createQueuedAgentRuntime', () => {
   it('runs queued jobs through the delegate with bounded concurrency', async () => {
@@ -77,6 +81,29 @@ describe('createQueuedAgentRuntime', () => {
     });
     expect(enqueued).toHaveLength(1);
     expect(enqueued[0]).toMatchObject({ prompt: 'hello', cwd: process.cwd() });
+  });
+
+  it('can select the deterministic Pi E2E runtime', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'od-fake-pi-runtime-'));
+    const events: unknown[] = [];
+    try {
+      const runtime = createAgentRuntimeFromEnv({ OD_E2E_FAKE_PI_AGENT: '1' });
+      await expect(runtime.run({
+        ...baseInput('Create a deterministic Pi E2E smoke artifact'),
+        cwd: dir,
+        projectFs: createLocalProjectFs(dir),
+        events: { emit: (_channel, payload) => events.push(payload) },
+      })).resolves.toMatchObject({ resolvedModel: 'e2e/fake-pi' });
+
+      await expect(readFile(join(dir, 'index.html'), 'utf8')).resolves.toContain('Pi Agent E2E');
+      expect(events).toEqual(expect.arrayContaining([
+        expect.objectContaining({ type: 'thinking_delta' }),
+        expect.objectContaining({ type: 'tool_use', name: 'Write' }),
+        expect.objectContaining({ type: 'tool_result', toolUseId: 'fake-pi-write-index' }),
+      ]));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 

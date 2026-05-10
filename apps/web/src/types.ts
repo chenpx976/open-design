@@ -297,7 +297,7 @@ export interface AppConfig {
   // Pre-existing configs without this field fall through to the agent's
   // declared default.
   agentModels?: Record<string, AgentModelChoice>;
-  // Per-agent non-secret CLI config locations injected into detection and runs.
+  // Optional non-secret runtime config locations still honored by packaged runs.
   agentCliEnv?: AgentCliEnvConfig;
   // Caps the upstream completion length in API mode. Defaults to 8192 when
   // unset; raise it for providers (e.g. MiMo) that allow longer responses.

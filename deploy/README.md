@@ -9,19 +9,17 @@ separate nginx container.
 ```bash
 cd deploy
 OPEN_DESIGN_IMAGE=docker.io/vanjayak/open-design:latest docker compose pull
-OPEN_DESIGN_IMAGE=docker.io/vanjayak/open-design:latest docker compose up -d --no-build
+OPEN_DESIGN_IMAGE=docker.io/vanjayak/open-design:latest docker compose --profile worker up -d --no-build
 ```
 
 Defaults:
 
 - Host port: `127.0.0.1:7456` (`OPEN_DESIGN_PORT=8080` to publish on `127.0.0.1:8080`)
 - Runtime data volume: `open_design_data` mounted at `/app/.od`
-- Agent runtime: `inline` (`OPEN_DESIGN_AGENT_RUNTIME=sqlite-worker` to enqueue
-  runs for a separate worker service)
-- Agent run store: `sqlite` (`OPEN_DESIGN_AGENT_RUN_STORE=postgres` to store
-  run state and event history in Postgres)
-- Agent job queue: `sqlite` (`OPEN_DESIGN_AGENT_JOB_QUEUE=redis` to dispatch
-  work through the Redis service in the `worker` profile)
+- Agent runtime: `sqlite-worker`; the API enqueues runs and `agent-worker`
+  consumes them through the embedded Pi SDK
+- Agent run store: `postgres`; run state and event history live in Postgres
+- Agent job queue: `redis`; worker dispatch uses Redis leases and heartbeats
 - Node heap cap: `--max-old-space-size=192`
 - Compose memory cap: `384m` (`OPEN_DESIGN_MEM_LIMIT=256m` to override)
 
@@ -44,35 +42,25 @@ Pin a specific published image with a digest instead of the mutable `latest` tag
 OPEN_DESIGN_IMAGE=docker.io/vanjayak/open-design@sha256:<digest> docker compose up -d --no-build
 ```
 
-## Worker mode
+## Cluster worker mode
 
-The default container runs the embedded Pi SDK inline inside the API process.
-For a worker-shaped deployment on one host, run the API in `sqlite-worker` mode
-and enable the `worker` Compose profile:
+The recommended Compose path starts the full local cluster shape:
 
 ```bash
-OPEN_DESIGN_AGENT_RUNTIME=sqlite-worker docker compose --profile worker up -d --no-build
+OPEN_DESIGN_AGENT_RUNTIME=sqlite-worker \
+OPEN_DESIGN_AGENT_RUN_STORE=postgres \
+OPEN_DESIGN_AGENT_JOB_QUEUE=redis \
+docker compose --profile worker up -d --build
 ```
 
 This starts:
 
 - `open-design`: HTTP API, static web UI, run creation, and SSE streaming.
-- `agent-worker`: consumes `agent_run_jobs` from the shared `/app/.od` SQLite
-  store and writes Pi events back into `agent_run_events`.
-
-This mode is a local/single-host stepping stone, not the final cluster queue.
-For multi-node clusters, replace the SQLite job table with a durable queue and
-replace the SQLite event mirror with Postgres plus Redis/NATS fan-out. Keep the
-same API/worker role split.
-
-To exercise a more cluster-like queue, keep run/event history on the shared
-`open_design_data` volume but dispatch jobs through Redis:
-
-```bash
-OPEN_DESIGN_AGENT_RUNTIME=sqlite-worker \
-OPEN_DESIGN_AGENT_JOB_QUEUE=redis \
-docker compose --profile worker up -d --no-build --scale agent-worker=2
-```
+- `agent-worker`: consumes Redis jobs and writes Pi events back through the run
+  persistence contract.
+- `redis`: durable-enough local job queue for the worker profile.
+- `postgres`: run state and event history for reconnects, retries, and API
+  replacement.
 
 In Redis mode workers use a lease and heartbeat. Tune
 `OPEN_DESIGN_AGENT_WORKER_LEASE_MS`, `OPEN_DESIGN_AGENT_WORKER_HEARTBEAT_MS`,
@@ -80,14 +68,10 @@ In Redis mode workers use a lease and heartbeat. Tune
 `OPEN_DESIGN_AGENT_WORKER_MAX_ATTEMPTS` for slower models or larger design
 generations.
 
-For the full externalized control plane, use Postgres for run/event history and
-Redis for job dispatch:
+Scale workers on one host:
 
 ```bash
-OPEN_DESIGN_AGENT_RUNTIME=sqlite-worker \
-OPEN_DESIGN_AGENT_RUN_STORE=postgres \
-OPEN_DESIGN_AGENT_JOB_QUEUE=redis \
-docker compose --profile worker up -d --no-build --scale agent-worker=2
+docker compose --profile worker up -d --scale agent-worker=2
 ```
 
 The default Postgres URL is
@@ -98,6 +82,15 @@ databases or non-default credentials.
 
 The image intentionally does not bundle Claude/Codex/Gemini CLI binaries because
 agent execution is hosted through the embedded Pi SDK.
+
+Useful operations:
+
+```bash
+docker compose --profile worker ps
+docker compose --profile worker logs -f open-design agent-worker
+docker compose --profile worker down
+docker compose --profile worker down -v # also removes local run/project data
+```
 
 ## Publish to Docker Hub
 

@@ -1,6 +1,6 @@
 # Open Design
 
-> **[Claude Design][cd] 的开源替代品。** 本地优先、可部署到 Vercel、每一层都 BYOK —— **16 套 coding-agent CLI** 在 `PATH` 上自动检测（Claude Code, Codex, Devin for Terminal, Cursor Agent, Gemini CLI, OpenCode, Qwen, Qoder CLI, GitHub Copilot CLI, Hermes, Kimi, Pi, Kiro, Kilo, Mistral Vibe, DeepSeek TUI）就是设计引擎，由 **31 个可组合 Skills** 和 **72 套品牌级 Design System** 驱动。
+> **[Claude Design][cd] 的开源替代品。** 本地优先、可部署、每一层都 BYOK —— Node.js daemon 直接托管 **Pi SDK coding agent**，由 **31 个可组合 Skills** 和 **72 套品牌级 Design System** 驱动。不再需要本地 coding-agent CLI 或 PATH 配置；生产部署可以用 Redis + Postgres 拆分 API 与 Pi worker。
 
 <p align="center">
   <img src="docs/assets/banner.png" alt="Open Design 封面：与本地 AI 智能体共同设计" width="100%" />
@@ -20,7 +20,7 @@
   <a href="https://open-design.ai/"><img alt="下载客户端" src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-%E5%AE%A2%E6%88%B7%E7%AB%AF-ff6b35?style=flat-square" /></a>
   <a href="https://github.com/nexu-io/open-design/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/nexu-io/open-design?style=flat-square&color=blueviolet&label=release&include_prereleases&display_name=tag" /></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square" /></a>
-  <a href="#支持的-coding-agent"><img alt="Agents" src="https://img.shields.io/badge/agents-16%20CLIs%20%2B%20BYOK%20proxy-black?style=flat-square" /></a>
+  <a href="#支持的-coding-agent"><img alt="Agents" src="https://img.shields.io/badge/agent-Pi%20SDK%20%2B%20BYOK%20proxy-black?style=flat-square" /></a>
   <a href="#design-system"><img alt="Design systems" src="https://img.shields.io/badge/design%20systems-72-orange?style=flat-square" /></a>
   <a href="#内置-skills"><img alt="Skills" src="https://img.shields.io/badge/skills-31-teal?style=flat-square" /></a>
   <a href="https://discord.gg/qhbcCH8Am4"><img alt="Discord" src="https://img.shields.io/badge/discord-加入-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
@@ -35,7 +35,7 @@
 
 Anthropic 的 [Claude Design][cd]（2026-04-17 发布，基于 Opus 4.7）让大家第一次看到：当一个 LLM 不再写废话、开始直接交付设计成品，会是什么样子。它瞬间出圈 —— 然后保持**闭源**、付费、只跑在云上、绑定 Anthropic 的模型和 Anthropic 的内部 skill。没有 checkout，没有自托管，没有 Vercel 部署，也换不了自己的 agent。
 
-**Open Design（OD）就是它的开源替代品。** 同一套 loop、同一种「artifact-first」心智模型，但没有锁定。我们不做 agent —— 你笔记本上最强的 coding agent 已经装好了。我们要做的，是把它接进一个 skill 驱动的设计工作流：本地用 `pnpm tools-dev` 跑完整本地闭环，云端可单独部署 Web 层，每一层都 BYOK（自带 Key）。
+**Open Design（OD）就是它的开源替代品。** 同一套 loop、同一种「artifact-first」心智模型，但没有锁定。我们把 Pi SDK 托管在本地 Node.js daemon 里，再接入 skill 驱动的设计工作流：本地用 `pnpm tools-dev` 跑完整闭环，Docker Compose 可启动 API + worker + Redis + Postgres，每一层都 BYOK（自带 Key）。
 
 输入「帮我做一份杂志风的种子轮 pitch deck」。在模型挥洒第一个像素之前，**初始化问题表单**已经先跳出来。Agent 从 5 套精挑的视觉方向里选一个。一张活的 `TodoWrite` 计划卡片实时流入 UI。Daemon 在磁盘上构建出一个真实的项目目录，里面有 seed 模板、布局库、自检 checklist。Agent **强制 pre-flight** 读取它们，对自己的输出跑一轮**五维评审**，几秒后吐出一个 `<artifact>`，渲染在沙盒 iframe 里。
 
@@ -45,21 +45,21 @@ OD 站在四个开源项目的肩膀上：
 
 - [**`alchaincyf/huashu-design`**（花叔的画术）](https://github.com/alchaincyf/huashu-design) —— 设计哲学的指南针。Junior-Designer 工作流、5 步品牌资产协议、anti-AI-slop checklist、五维自评审、以及方向选择器背后的「5 流派 × 20 种设计哲学」思路 —— 全部蒸馏进 [`apps/daemon/src/prompts/discovery.ts`](apps/daemon/src/prompts/discovery.ts)。
 - [**`op7418/guizang-ppt-skill`**（歸藏的杂志风 PPT skill）](https://github.com/op7418/guizang-ppt-skill) —— Deck 模式。原样捆绑在 [`skills/guizang-ppt/`](skills/guizang-ppt/) 下，原 LICENSE 保留；杂志版式、WebGL hero、P0/P1/P2 checklist。
-- [**`OpenCoworkAI/open-codesign`**](https://github.com/OpenCoworkAI/open-codesign) —— UX 北极星，也是我们最接近的同类。第一个开源的 Claude-Design 替代品。我们借鉴了它的流式 artifact 循环、沙盒 iframe 预览模式（自带 React 18 + Babel）、实时 agent 面板（todos + tool calls + 可中断生成）、5 种导出格式列表（HTML / PDF / PPTX / ZIP / Markdown）。我们刻意在形态上分流 —— 它是桌面 Electron 应用，把 [`pi-ai`][piai] 打包进去做 agent；我们是 Web 应用 + 本地 daemon，把 agent 运行时**委托**给你已经装好的 CLI。
-- [**`multica-ai/multica`**](https://github.com/multica-ai/multica) —— Daemon 与运行时架构。PATH 扫描式 agent 检测，本地 daemon 作为唯一的特权进程，agent-as-teammate 的世界观。
+- [**`OpenCoworkAI/open-codesign`**](https://github.com/OpenCoworkAI/open-codesign) —— UX 北极星，也是我们最接近的同类。第一个开源的 Claude-Design 替代品。我们借鉴了它的流式 artifact 循环、沙盒 iframe 预览模式（自带 React 18 + Babel）、实时 agent 面板（todos + tool calls + 可中断生成）、5 种导出格式列表（HTML / PDF / PPTX / ZIP / Markdown）。
+- [**`multica-ai/multica`**](https://github.com/multica-ai/multica) —— Daemon 与运行时架构、本地 daemon 作为唯一特权进程、agent-as-teammate 的世界观。当前实现已从 PATH 扫描切换为内嵌 Pi SDK。
 
 ## 一眼概览
 
 | | 你拿到的 |
 |---|---|
-| **Coding-agent CLI（16 套）** | Claude Code · Codex CLI · Devin for Terminal · Cursor Agent · Gemini CLI · OpenCode · Qwen Code · Qoder CLI · GitHub Copilot CLI · Hermes (ACP) · Kimi CLI (ACP) · Pi (RPC) · Kiro CLI (ACP) · Kilo (ACP) · Mistral Vibe CLI (ACP) · DeepSeek TUI —— 在 `PATH` 上自动检测，picker 一键切换 |
+| **Coding agent** | Node.js daemon 内嵌 Pi SDK —— 不扫本地 PATH、不依赖 GUI 继承环境，同一条事件流展示文本、思考、工具调用与工具结果 |
 | **BYOK 兜底** | 协议分流代理 `/api/proxy/{anthropic,openai,azure,google}/stream` —— 填 `baseUrl` + `apiKey` + `model`，选择 Anthropic / OpenAI / Azure OpenAI / Google Gemini，daemon 会把各家 SSE 统一成同一条 chat stream。daemon 边界拒绝 loopback / link-local / RFC1918 防 SSRF。 |
 | **内置 design system** | **72 套** —— 2 套手写起手 + 70 套从 [`awesome-design-md`][acd2] 导入的产品系统（Linear、Stripe、Vercel、Airbnb、Tesla、Notion、Anthropic、Apple、Cursor、Supabase、Figma、小红书…） |
 | **内置 skill** | **31 个** —— 27 个 `prototype` 模式（web-prototype、saas-landing、dashboard、mobile-app、gamified-app、social-carousel、magazine-poster、dating-web、sprite-animation、motion-frames、critique、tweaks、wireframe-sketch、pm-spec、eng-runbook、finance-report、hr-onboarding、invoice、kanban-board、team-okrs…）+ 4 个 `deck` 模式（`guizang-ppt` · `simple-deck` · `replit-deck` · `weekly-update`）。Picker 按 `scenario` 分组：design / marketing / operation / engineering / product / finance / hr / sale / personal。 |
 | **媒体生成** | 图像 · 视频 · 音频三类 surface 与设计循环并行可用。**gpt-image-2**（Azure / OpenAI）做海报、头像、信息图、城市插画地图 · **Seedance 2.0**（字节跳动）做 15 秒电影感 t2v + i2v · **HyperFrames**（[heygen-com/hyperframes](https://github.com/heygen-com/hyperframes)）做 HTML→MP4 动态图形（产品揭示、动力学排版、数据图表、社媒卡片、Logo 收尾）。**93 条**可一键复刻的 prompt gallery —— 43 条 gpt-image-2 + 39 条 Seedance + 11 条 HyperFrames，统一放在 [`prompt-templates/`](prompt-templates/) 下，附预览图与来源署名。Chat 入口和写代码同一处；输出真实的 `.mp4` / `.png` 落到项目工作区里。 |
 | **视觉方向** | 5 套精选流派（Editorial Monocle · Modern Minimal · Warm Soft · Tech Utility · Brutalist Experimental），每套自带 OKLch 色板 + 字体栈（[`apps/daemon/src/prompts/directions.ts`](apps/daemon/src/prompts/directions.ts)） |
 | **设备外壳** | iPhone 15 Pro · Pixel · iPad Pro · MacBook · Browser Chrome —— 像素级精确，跨 skill 共享，统一在 [`assets/frames/`](assets/frames/) |
-| **Agent 运行时** | 本地 daemon 在你的项目目录里 spawn CLI —— agent 拥有真实的 `Read` / `Write` / `Bash` / `WebFetch`，作用在真实磁盘上；每个 adapter 都有 Windows `ENAMETOOLONG` 兜底（stdin / 临时 prompt 文件） |
+| **Agent 运行时** | 本地 daemon 在项目目录里托管 Pi —— agent 通过 `ProjectFs` 获得有边界的 `Read` / `Write` / `Edit` / `Bash` 工具；Compose 可把执行拆到独立 worker |
 | **导入** | 把 [Claude Design][cd] 导出的 ZIP 直接拖到欢迎弹窗 —— `POST /api/import/claude-design` 解压成真实项目，agent 接着 Anthropic 停下的地方继续编辑，不用再向模型重述上下文 |
 | **持久化** | SQLite 在 `.od/app.sqlite`：projects · conversations · messages · tabs · 用户 templates。明天再开，todo 卡片和打开的文件都还在原位。 |
 | **生命周期** | 唯一入口 `pnpm tools-dev`（start / stop / run / status / logs / inspect / check）—— 用类型化 sidecar stamp 启动 daemon + web（+ desktop） |
@@ -217,9 +217,9 @@ OD 站在四个开源项目的肩膀上：
 
 ## 六个底层设计
 
-### 1 · 我们不带 agent，你的就够好
+### 1 · Pi 由 daemon 托管
 
-Daemon 启动时扫 `PATH`，找 [`claude`](https://docs.anthropic.com/en/docs/claude-code)、[`codex`](https://github.com/openai/codex)、[`cursor-agent`](https://www.cursor.com/cli)、[`gemini`](https://github.com/google-gemini/gemini-cli)、[`opencode`](https://opencode.ai/)、[`qwen`](https://github.com/QwenLM/qwen-code)、`qodercli`、[`copilot`](https://github.com/features/copilot/cli)、`hermes`、`kimi` 和 [`pi`](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)。能找到的都成为候选设计引擎 —— 走 stdio，每个 CLI 一个 adapter，model picker 一键切换。灵感来自 [`multica`](https://github.com/multica-ai/multica) 和 [`cc-switch`](https://github.com/farion1231/cc-switch)。一个 CLI 都没装？API mode 就是同一条管线减去 spawn —— 选择 Anthropic、OpenAI 兼容、Azure OpenAI 或 Google Gemini，daemon 把归一化后的 SSE 转发回浏览器，loopback / link-local / RFC1918 在边界直接拒绝。
+Open Design 不再要求用户机器提供 coding-agent CLI。Daemon 通过 `@earendil-works/pi-coding-agent` 内嵌 Pi，负责模型选择、Pi 思考/工具事件流、以及 `ProjectFs` 文件边界。集群部署时，同一个 `AgentRuntime` 边界可以把任务写入队列交给 worker，浏览器协议保持不变。BYOK API mode 仍然保留，用于 provider proxy 场景。
 
 ### 2 · Skill 是文件，不是插件
 
@@ -290,7 +290,7 @@ DISCOVERY 指令         （turn-1 表单、turn-2 品牌分支、TodoWrite、�
 |---|---|
 | 前端 | Next.js 16 App Router + React 18 + TypeScript，可部署到 Vercel |
 | Daemon | Node 24 · Express · SSE 流 · `better-sqlite3`；表：`projects` · `conversations` · `messages` · `tabs` · `templates` |
-| Agent 传输层 | `child_process.spawn`，Claude Code 走 `claude-stream-json`、Qoder CLI 走 `qoder-stream-json`、Copilot 走 `copilot-stream-json`、Codex / Gemini / OpenCode / Cursor Agent 走 `json-event-stream`（每个 CLI 一个 parser）、Devin / Hermes / Kimi / Kiro / Kilo / Mistral Vibe 走 `acp-json-rpc`（Agent Client Protocol）、Pi 走 `pi-rpc`（stdio JSON-RPC）、Qwen Code / DeepSeek TUI 走 `plain` |
+| Agent 传输层 | `AgentRuntime` 边界承载 Pi SDK 事件流；本地可 inline 执行，集群部署可写入 Redis 队列交给 worker；浏览器看到同一套 text / thinking / tool / result 事件 |
 | BYOK 代理 | `POST /api/proxy/{anthropic,openai,azure,google}/stream` → 各 provider 上游 API，统一输出 `delta/end/error` SSE；daemon 边界拒绝 loopback / link-local / RFC1918 |
 | 存储 | 纯文件 `.od/projects/<id>/` + SQLite `.od/app.sqlite`（已 gitignore，daemon 启动自建）。`OD_DATA_DIR` 可改根目录用于测试隔离 |
 | 预览 | 沙盒 iframe（`srcdoc`）+ 每个 skill 的 `<artifact>` parser（[`apps/web/src/artifacts/parser.ts`](apps/web/src/artifacts/parser.ts)） |
@@ -325,7 +325,7 @@ pnpm tools-dev run web
 
 第一次加载会：
 
-1. 检测你 `PATH` 上有哪些 agent CLI，自动选一个。
+1. 选择 daemon 内嵌的 Pi SDK agent。
 2. 加载 31 个 skill + 72 套 design system。
 3. 弹欢迎对话框，让你贴 Anthropic key（仅 BYOK 兜底路径需要）。
 4. **自动创建 `./.od/`** —— 本地运行时目录，存放 SQLite 项目库、各项目工作区、保存下来的 artifact。**没有** `od init` 这一步，daemon 启动时会自己 `mkdir`。
@@ -366,8 +366,7 @@ open-design/
 │   │   ├── src/                   ← TypeScript daemon 源码
 │   │   │   ├── cli.ts             ← `od` bin 源码，编译到 dist/cli.js
 │   │   │   ├── server.ts          ← /api/* 路由（projects、chat、files、exports）
-│   │   │   ├── agents.ts          ← PATH 扫描器 + 各 CLI 的 argv 拼装
-│   │   │   ├── claude-stream.ts   ← Claude Code stdout 流式 JSON 解析
+│   │   │   ├── agents.ts          ← 内嵌 Pi SDK agent catalog
 │   │   │   ├── skills.ts          ← SKILL.md frontmatter 加载器
 │   │   │   └── db.ts              ← SQLite schema（projects/messages/templates/tabs）
 │   │   ├── sidecar/               ← tools-dev daemon sidecar wrapper
@@ -569,13 +568,13 @@ OD 不止于代码。同一套生成 `<artifact>` HTML 的 chat 入口，也驱�
 
 Chat / artifact 循环最显眼，但这套仓库里还有几个能力被埋得有点深，对照其它产品做选型之前值得先扫一遍：
 
-- **Claude Design ZIP 导入。** 把 claude.ai 导出的 ZIP 拖到欢迎弹窗，`POST /api/import/claude-design` 把它解压成真实 `.od/projects/<id>/`，把入口文件作为 tab 打开，并预置一句「接着 Anthropic 停下的地方继续编辑」给本地 agent。不用再让模型重述上下文，也不用「让模型重新画一遍」。([`apps/daemon/src/server.ts`](apps/daemon/src/server.ts) — `/api/import/claude-design`)
+- **Claude Design ZIP 导入。** 把 claude.ai 导出的 ZIP 拖到欢迎弹窗，`POST /api/import/claude-design` 把它解压成真实 `.od/projects/<id>/`，把入口文件作为 tab 打开，并预置一句「接着 Anthropic 停下的地方继续编辑」给 Pi agent。不用再让模型重述上下文，也不用「让模型重新画一遍」。([`apps/daemon/src/server.ts`](apps/daemon/src/server.ts) — `/api/import/claude-design`)
 - **多 provider BYOK 代理。** `POST /api/proxy/{anthropic,openai,azure,google}/stream` 接收 `{ baseUrl, apiKey, model, messages }`，构造各 provider 的上游请求，把 SSE chunk 统一成 `delta/end/error`，同时拒绝 loopback / link-local / RFC1918 防 SSRF。OpenAI 兼容路径覆盖 OpenAI、Azure AI Foundry `/openai/v1`、DeepSeek、Groq、MiMo、OpenRouter、自托管 vLLM；Azure OpenAI 路径补上 deployment URL + `api-version`；Google 路径走 Gemini `:streamGenerateContent`。
 - **用户自存 templates。** 喜欢某次渲染？`POST /api/templates` 把 HTML + 元数据快照进 SQLite `templates` 表。下个项目的 picker 里多一行「你的模板」 —— 跟内置 31 套同一个挑选面，但是你的。
 - **Tab 持久化。** 每个项目记得自己打开的文件和当前 tab，存在 `tabs` 表里。明天再打开，工作区还是你昨天离开时的样子。
 - **Artifact lint API。** `POST /api/artifacts/lint` 对生成的 artifact 跑结构性检查（`<artifact>` 框架是否破损、必需的副文件是否缺失、palette token 是否过期），返回 agent 下一回合可以读回去的 findings。五维自评审就是用它把分数落到证据上而不是 vibe。
 - **Sidecar 协议 + 桌面端自动化。** Daemon、web、desktop 进程都带类型化的 5 字段 stamp（`app · mode · namespace · ipc · source`），并把 JSON-RPC IPC 通道暴露在 `/tmp/open-design/ipc/<namespace>/<app>.sock`。`tools-dev inspect desktop status \| eval \| screenshot` 就跑在这条通道上，所以 headless E2E 直接打到真实 Electron 壳，不用造定制夹具（[`packages/sidecar-proto/`](packages/sidecar-proto/)、[`apps/desktop/src/main/`](apps/desktop/src/main/)）。
-- **Windows 友好的 spawn。** 任何在长 prompt 上会撞 `CreateProcess` 32 KB argv 上限的 adapter（Codex、Gemini、OpenCode、Cursor Agent、Qwen、Qoder CLI、Pi）都改走 stdin。Claude Code 和 Copilot 保留 `-p`；连 stdin 都装不下时 daemon 退回临时 prompt 文件。
+- **Worker 友好的执行边界。** 长 prompt、思考流、工具调用和文件写入都穿过同一个 `AgentRuntime`。本地开发可 inline 跑 Pi，集群部署则把同一个 run 交给 Redis + Postgres 背后的 `agent-worker`。
 - **按 namespace 隔离的 runtime data。** `OD_DATA_DIR` 加 `--namespace` 给你完全隔离的 `.od/`-style 目录树，Playwright、beta channel、你正经的项目永远不会共用同一个 SQLite 文件。
 
 ## 反 AI Slop 机制
@@ -596,10 +595,10 @@ Chat / artifact 循环最显眼，但这套仓库里还有几个能力被埋得�
 | License | 闭源 | MIT | **Apache-2.0** |
 | 形态 | Web (claude.ai) | 桌面 (Electron) | **Web 应用 + 本地 daemon** |
 | 可部署 Vercel | ❌ | ❌ | **✅** |
-| Agent 运行时 | 内置 (Opus 4.7) | 内置 ([`pi-ai`][piai]) | **委托给用户已装好的 CLI** |
+| Agent 运行时 | 内置 (Opus 4.7) | 内置 ([`pi-ai`][piai]) | **Node.js daemon 内嵌 Pi SDK** |
 | Skill | 私有 | 12 套自定义 TS 模块 + `SKILL.md` | **31 套基于文件的 [`SKILL.md`][skill]，可丢入** |
 | Design system | 私有 | `DESIGN.md`（v0.2 路线图） | **`DESIGN.md` × 72 套，开箱即有** |
-| Provider 灵活度 | 仅 Anthropic | 7+（[`pi-ai`][piai]） | **16 套 CLI adapter + OpenAI 兼容 BYOK 代理** |
+| Provider 灵活度 | 仅 Anthropic | 7+（[`pi-ai`][piai]） | **Pi model registry + OpenAI 兼容 BYOK 代理** |
 | 初始化问题表单 | ❌ | ❌ | **✅ 硬规则 turn 1** |
 | 方向选择器 | ❌ | ❌ | **✅ 5 套确定性方向** |
 | 实时 todo 进度 + tool 流 | ❌ | ✅ | **✅**（UX 模式来自 open-codesign） |
@@ -624,29 +623,13 @@ Chat / artifact 循环最显眼，但这套仓库里还有几个能力被埋得�
 
 ## 支持的 Coding Agent
 
-Daemon 启动时从 `PATH` 自动检测，无需配置。流式分发逻辑在 [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts) 的 `AGENT_DEFS` 里；每个 CLI 的 parser 也在同目录。模型列表的来源要么是探测 `<bin> --list-models` / `<bin> models` / ACP 握手，要么走精选 fallback。
+Open Design 现在只暴露一个 daemon-hosted coding agent：Pi SDK。
+[`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts) 仍保留现有 Web contract
+形状，但指向 `node:pi-sdk` / `embedded`，不会解析或 spawn 用户 PATH 上的二进制。
+模型列表来自 Pi model registry，registry 不可用时走精选 fallback。
+多 provider BYOK 仍通过 `POST /api/proxy/{provider}/stream` 支持 Anthropic / OpenAI 兼容 / Azure OpenAI / Gemini，并在 daemon 边界拒绝 loopback / link-local / RFC1918。
 
-| Agent | 二进制 | 流式格式 | argv 形态（拼装好的 prompt 路径） |
-|---|---|---|---|
-| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `claude` | `claude-stream-json`（类型化事件） | `claude -p <prompt> --output-format stream-json --verbose [--include-partial-messages] [--add-dir …] --permission-mode bypassPermissions` |
-| [Codex CLI](https://github.com/openai/codex) | `codex` | `json-event-stream` + `codex` parser | `codex exec --json --skip-git-repo-check --sandbox workspace-write -c sandbox_workspace_write.network_access=true [-C cwd] [--model …] [-c model_reasoning_effort=…]`（prompt 走 stdin） |
-| Devin for Terminal | `devin` | `acp-json-rpc` | `devin --permission-mode dangerous --respect-workspace-trust false acp` |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `gemini` | `json-event-stream` + `gemini` parser | `GEMINI_CLI_TRUST_WORKSPACE=true gemini --output-format stream-json --yolo [--model …]`（prompt 走 stdin） |
-| [OpenCode](https://opencode.ai/) | `opencode` | `json-event-stream` + `opencode` parser | `opencode run --format json --dangerously-skip-permissions [--model …] -`（prompt 走 stdin） |
-| [Cursor Agent](https://www.cursor.com/cli) | `cursor-agent` | `json-event-stream` + `cursor-agent` parser | `cursor-agent --print --output-format stream-json --stream-partial-output --force --trust [--workspace cwd] [--model …] -`（prompt 走 stdin） |
-| [Qwen Code](https://github.com/QwenLM/qwen-code) | `qwen` | `plain`（原始 stdout chunk） | `qwen --yolo [--model …] -`（prompt 走 stdin） |
-| Qoder CLI | `qodercli` | `qoder-stream-json`（类型化事件） | `qodercli -p --output-format stream-json --permission-mode bypass_permissions [--cwd cwd] [--model …] [--add-dir …]`（prompt 走 stdin） |
-| [GitHub Copilot CLI](https://github.com/features/copilot/cli) | `copilot` | `copilot-stream-json`（类型化事件） | `copilot -p <prompt> --allow-all-tools --output-format json [--model …] [--add-dir …]` |
-| [Hermes](https://github.com/eqlabs/hermes) | `hermes` | `acp-json-rpc`（Agent Client Protocol） | `hermes acp --accept-hooks` |
-| Kimi CLI | `kimi` | `acp-json-rpc` | `kimi acp` |
-| [Pi](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) | `pi` | `pi-rpc`（stdio JSON-RPC） | `pi --mode rpc [--model …] [--thinking …]`（prompt 走 RPC `prompt` 命令） |
-| [Kiro CLI](https://kiro.dev) | `kiro-cli` | `acp-json-rpc` | `kiro-cli acp` |
-| Kilo | `kilo` | `acp-json-rpc` | `kilo acp` |
-| [Mistral Vibe CLI](https://github.com/mistralai/mistral-vibe) | `vibe-acp` | `acp-json-rpc` | `vibe-acp` |
-| DeepSeek TUI | `deepseek` | `plain`（原始 stdout chunk） | `deepseek exec --auto [--model …] <prompt>` |
-| **多 provider BYOK** | n/a | SSE 归一化 | `POST /api/proxy/{provider}/stream` → Anthropic / OpenAI 兼容 / Azure OpenAI / Gemini；拒绝 loopback / link-local / RFC1918 |
-
-加一个新 CLI = 在 [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts) 里加一项。流式格式从 `claude-stream-json` / `qoder-stream-json` / `copilot-stream-json` / `json-event-stream`（搭配每 CLI 的 `eventParser`）/ `acp-json-rpc` / `pi-rpc` / `plain` 中选一个。
+接入新的执行方式时，不再新增本地 CLI 检测；实现 [`AgentRuntime`](apps/daemon/src/agent-runtime.ts) 边界，并在 [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts) 暴露能力即可。
 
 ## 引用与师承
 
@@ -657,8 +640,8 @@ Daemon 启动时从 `PATH` 自动检测，无需配置。流式分发逻辑在 [
 | [`Claude Design`][cd] | 本仓库为之提供开源替代的闭源产品。 |
 | [**`alchaincyf/huashu-design`**（花叔的画术）](https://github.com/alchaincyf/huashu-design) | 设计哲学的核心。Junior-Designer 工作流、5 步品牌资产协议、anti-AI-slop checklist、五维自评审、以及方向选择器背后的「5 流派 × 20 种设计哲学」库 —— 全部蒸馏进 [`apps/daemon/src/prompts/discovery.ts`](apps/daemon/src/prompts/discovery.ts) 与 [`apps/daemon/src/prompts/directions.ts`](apps/daemon/src/prompts/directions.ts)。 |
 | [**`op7418/guizang-ppt-skill`**（歸藏）][guizang] | Magazine-web-PPT skill 原样捆绑在 [`skills/guizang-ppt/`](skills/guizang-ppt/) 下，原 LICENSE 保留。Deck 模式默认。P0/P1/P2 checklist 文化也被借给了所有其他 skill。 |
-| [**`multica-ai/multica`**](https://github.com/multica-ai/multica) | Daemon + adapter 架构。PATH 扫描式 agent 检测、本地 daemon 作为唯一特权进程、agent-as-teammate 世界观。我们采纳模型，不 vendor 代码。 |
-| [**`OpenCoworkAI/open-codesign`**][ocod] | 第一个开源的 Claude-Design 替代品，也是我们最接近的同类。已采纳的 UX 模式：流式 artifact 循环、沙盒 iframe 预览（自带 React 18 + Babel）、实时 agent 面板（todos + tool calls + 可中断）、5 种导出格式列表（HTML/PDF/PPTX/ZIP/Markdown）、本地优先的 designs hub、`SKILL.md` 品味注入，以及评论模式预览标注的第一版。路线图上的 UX 模式：可靠的局部 patch 和 AI 自吐 tweaks 面板。**我们刻意不 vendor [`pi-ai`][piai]** —— open-codesign 把它打包成 agent 运行时；我们则委托给用户已经装好的 CLI。 |
+| [**`multica-ai/multica`**](https://github.com/multica-ai/multica) | Daemon + runtime 架构、本地 daemon 作为唯一特权进程、agent-as-teammate 世界观。当前实现已把 PATH 扫描替换为内嵌 Pi SDK。 |
+| [**`OpenCoworkAI/open-codesign`**][ocod] | 第一个开源的 Claude-Design 替代品，也是我们最接近的同类。已采纳的 UX 模式：流式 artifact 循环、沙盒 iframe 预览（自带 React 18 + Babel）、实时 agent 面板（todos + tool calls + 可中断）、5 种导出格式列表（HTML/PDF/PPTX/ZIP/Markdown）、本地优先的 designs hub、`SKILL.md` 品味注入，以及评论模式预览标注的第一版。 |
 | [`VoltAgent/awesome-claude-design`][acd] / [`awesome-design-md`][acd2] | 9 段式 `DESIGN.md` schema 的来源，69 套产品系统通过 [`scripts/sync-design-systems.ts`](scripts/sync-design-systems.ts) 导入。 |
 | [`farion1231/cc-switch`](https://github.com/farion1231/cc-switch) | 跨多个 agent CLI 的 symlink 式 skill 分发灵感来源。 |
 | [Claude Code skills][skill] | `SKILL.md` 规范原样采纳 —— 任何 Claude Code skill 丢进 `skills/` 都能被 daemon 识别。 |
@@ -667,7 +650,7 @@ Daemon 启动时从 `PATH` 自动检测，无需配置。流式分发逻辑在 [
 
 ## Roadmap
 
-- [x] Daemon + agent 检测（16 套 CLI adapter）+ skill registry + design-system 目录
+- [x] Daemon 内嵌 Pi SDK agent + skill registry + design-system 目录
 - [x] Web 应用 + 对话 + question form + 5 套方向选择器 + todo progress + 沙盒预览
 - [x] 31 个 skill + 72 套 design system + 5 套视觉方向 + 5 个设备外壳
 - [x] SQLite 后端的 projects · conversations · messages · tabs · templates
@@ -702,7 +685,7 @@ Daemon 启动时从 `PATH` 自动检测，无需配置。流式分发逻辑在 [
 
 - **加一个 skill** —— 往 [`skills/`](skills/) 丢一个文件夹，遵循 [`SKILL.md`][skill] 规范。
 - **加一套 design system** —— 往 [`design-systems/<brand>/`](design-systems/) 丢一份 `DESIGN.md`，用 9 段式 schema。
-- **接入一个新的 coding-agent CLI** —— 在 [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts) 里加一项。
+- **接入一个新的 agent runtime** —— 实现 [`AgentRuntime`](apps/daemon/src/agent-runtime.ts) 边界，并在 [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts) 暴露能力。
 
 完整流程、合并硬线、代码风格、我们不接收的 PR 类型 → [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)（[English](CONTRIBUTING.md)，[Deutsch](CONTRIBUTING.de.md)，[Français](CONTRIBUTING.fr.md)）。
 

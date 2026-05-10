@@ -71,6 +71,12 @@ if [[ "$node_major" != "24" ]]; then
   exit 1
 fi
 
+worker_help="$(docker run --rm --entrypoint node "$IMAGE_REF" apps/daemon/dist/cli.js agent-worker --help)"
+if ! grep -q "Usage: od agent-worker" <<<"$worker_help"; then
+  echo "agent-worker command is not available in the runtime image" >&2
+  exit 1
+fi
+
 CONTAINER_ID="$(docker run -d -p 127.0.0.1::7456 "$IMAGE_REF")"
 runtime_port="$(docker port "$CONTAINER_ID" 7456/tcp | awk -F: '{print $2}')"
 health_code=""

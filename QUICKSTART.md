@@ -9,11 +9,14 @@ Run the full product locally.
 - **Node.js:** `~24` (Node 24.x). The repo enforces this through `package.json#engines`.
 - **pnpm:** `10.33.x`. The repo pins `pnpm@10.33.2` through `packageManager`; use Corepack so the pinned version is selected automatically.
 - **OS:** macOS, Linux, and WSL2 are the primary paths. Windows native should work for most flows, but WSL2 is the safer baseline.
-- **Optional local agent CLI:** Claude Code, Codex, Devin for Terminal, Gemini CLI, OpenCode, Cursor Agent, Qwen, Qoder CLI, GitHub Copilot CLI, etc. If none are installed, use the BYOK API mode from Settings.
+- **Agent runtime:** Open Design embeds Pi through the Node.js daemon. No local coding-agent CLI or PATH setup is required.
 
-### Local agent CLI and PATH
+### Pi SDK runtime
 
-The daemon scans your **`PATH`** (plus common user toolchain directories). If you install a CLI with **`npm install -g`** or **Homebrew** and Open Design still shows it as *not installed*, the GUI may be starting with a minimal `PATH` that does not include your global npm or Homebrew `bin` directory (common on macOS when the app is not launched from a full login shell). Ensure the executable’s directory is on `PATH` for the process that runs the daemon, then use **Rescan** in **Settings → Execution & model**.
+The daemon hosts the Pi coding agent in-process for local development and can
+enqueue Pi jobs to a separate worker for Docker/cluster deployments. Configure
+models in **Settings → Pi agent & model settings** or use BYOK API mode from
+Settings. The old local-CLI discovery flow is no longer part of the runtime.
 
 `nvm` / `fnm` are optional convenience tools, not required project setup. If you use one, install/select Node 24 before running pnpm:
 
@@ -57,7 +60,7 @@ From the repository root:
 
 ```bash
 cd deploy
-docker compose up -d
+docker compose --profile worker up -d --build
 ```
 
 Open the app in your browser:
@@ -67,6 +70,8 @@ http://localhost:7456
 ```
 
 The first startup may take a few seconds while Docker pulls the latest image.
+This starts the full local cluster shape: API/web, Pi worker, Redis, and
+Postgres.
 
 ---
 
@@ -172,7 +177,7 @@ For the desktop shell and all managed sidecars in the background:
 pnpm tools-dev # starts daemon + web + desktop in the background
 ```
 
-On first load, the app detects your installed code-agent CLI (Claude Code / Codex / Devin for Terminal / Gemini / OpenCode / Cursor Agent / Qwen / Qoder CLI), picks it automatically, and defaults to `web-prototype` skill + `Neutral Modern` design system. Type a prompt and hit **Send**. The agent streams into the left pane; the `<artifact>` tag is parsed out and the HTML renders live on the right. When it finishes, click **Save to disk** to persist the artifact under `./.od/artifacts/<timestamp>-<slug>/index.html`.
+On first load, the app selects the daemon-hosted Pi agent and defaults to a prototype skill plus the starter design system. Type a prompt and hit **Send**. Pi thinking, tool calls, and tool results stream into the left pane while project files are written into `.od/projects/<id>/`; HTML renders live on the right as soon as the generated file appears.
 
 The **Design system** dropdown ships with 71 built-in systems — 2 hand-authored starters (Neutral Modern, Warm Editorial) and 69 product systems imported from [`awesome-design-md`](https://github.com/VoltAgent/awesome-design-md), grouped by category (AI & LLM, Developer Tools, Productivity, Backend, Design Tools, Fintech, E-Commerce, Media, Automotive). Pick one to skin every prototype in that brand's aesthetic, and another set of 57 design skills sourced from [`awesome-design-skills`](https://github.com/bergside/awesome-design-skills).
 
@@ -257,14 +262,14 @@ location /api/ {
 }
 ```
 
-## Two execution modes
+## Execution modes
 
 | Mode | Picker value | How a request flows |
 |---|---|---|
-| **Local CLI** (default when daemon detects an agent) | "Local CLI" | Frontend → daemon `/api/chat` → `spawn(<agent>, ...)` → stdout → SSE → artifact parser → preview |
-| **API mode** (fallback / no CLI) | "Anthropic API" / "OpenAI API" / "Azure OpenAI" / "Google Gemini" | Frontend → daemon `/api/proxy/{provider}/stream` → provider SSE normalized to `delta/end/error` → artifact parser → preview |
+| **Pi agent** | "Pi agent" | Frontend → daemon `/api/runs` → embedded Pi SDK → `ProjectFs` tools → SSE events → file workspace + preview |
+| **BYOK API mode** | "Anthropic API" / "OpenAI API" / "Azure OpenAI" / "Google Gemini" | Frontend → daemon `/api/proxy/{provider}/stream` → provider SSE normalized to `delta/end/error` → artifact parser → preview |
 
-Both modes feed the **same** `<artifact>` parser and the **same** sandboxed iframe. The only thing that differs is the transport and the system-prompt delivery (local CLIs have no separate system channel, so the composed prompt is folded into the user message).
+Both modes feed the same chat surface and sandboxed iframe. The Pi path is the default because it owns the filesystem/tool loop inside the Node.js daemon and can move to a worker process for cluster deployments.
 
 ## Prompt composition
 
@@ -283,11 +288,11 @@ Swap the skill or the design system in the top bar and the next send uses the ne
 ```
 open-design/
 ├── apps/
-│   ├── daemon/                # Node/Express — spawns local agents + serves APIs
+│   ├── daemon/                # Node/Express — hosts Pi SDK + serves APIs
 │   │   └── src/
 │   │       ├── cli.ts             # `od` bin entry
 │   │       ├── server.ts          # /api/* + static serving
-│   │       ├── agents.ts          # PATH scanner for claude/codex/devin/gemini/opencode/cursor-agent/qwen/qoder/copilot
+│   │       ├── agents.ts          # embedded Pi SDK agent catalog
 │   │       ├── skills.ts          # SKILL.md loader (frontmatter parser)
 │   │       └── design-systems.ts  # DESIGN.md loader
 │   │   ├── sidecar/           # tools-dev daemon sidecar wrapper
@@ -342,10 +347,8 @@ open-design/
 ## Troubleshooting
 
 - **`better-sqlite3` fails to load / ABI mismatch after a Node.js version change** — `pnpm install` re-runs `postinstall` automatically and rebuilds the native addon for the current Node.js. To rebuild manually or verify the fix: `pnpm --filter @open-design/daemon rebuild better-sqlite3` then `pnpm --filter @open-design/daemon exec node -e "require('better-sqlite3')"`. Requires build tools: `python3`, `make`, `g++` (or `clang++`). If you have `ignore-scripts=true` in your `.npmrc`, run `node scripts/postinstall.mjs` after `pnpm install`.
-- **"no agents found on PATH"** — install one of: `claude`, `codex`, `devin`, `gemini`, `opencode`, `cursor-agent`, `qwen`, `qodercli`, `copilot`. Or switch to API mode in Settings and paste a provider key.
-- **daemon 500 on /api/chat** — check the daemon terminal for the stderr tail; usually the CLI rejected its args. Different CLIs take different argv shapes; see `apps/daemon/src/agents.ts` `buildArgs` if you need to tweak.
+- **Pi agent run fails immediately** — check the daemon terminal for the Pi SDK error and verify the selected model/provider credentials in Settings.
 - **media generation says `OD_BIN` is missing or daemon URL is `:0`** — run the media dispatcher checks above. Do not resume the old CLI session; reopen the project from the Open Design app so the daemon can inject fresh `OD_*` variables.
-- **Codex loads too much plugin context** — start Open Design with `OD_CODEX_DISABLE_PLUGINS=1 pnpm tools-dev` to make daemon-spawned Codex processes run with `--disable plugins`.
 - **artifact never renders** — the model produced text without wrapping in `<artifact>`. Confirm the system prompt is going through (check daemon log) and consider switching to a more capable model or a stricter skill.
 
 ## Mapping back to the vision
@@ -354,5 +357,5 @@ This Quickstart is the runnable seed of the spec in [`docs/`](docs/). The spec d
 
 - `docs/architecture.md` describes the shipped stack: Next.js 16 App Router in front, local daemon behind it, and `apps/web/next.config.ts` rewrites in dev to keep the browser talking to the same `/api` surface.
 - `docs/skills-protocol.md` describes the full `od:` frontmatter (typed inputs, sliders, capability gating). This MVP reads `name` / `description` / `triggers` / `od.mode` / `od.design_system.requires` only — extend `apps/daemon/src/skills.ts` to add the rest.
-- `docs/agent-adapters.md` foresees richer dispatch (capability detection, streaming tool-calls). Our `apps/daemon/src/agents.ts` is a minimal dispatcher — enough to prove the wiring.
+- `docs/agent-adapters.md` describes the Pi SDK adapter and the worker/runtime boundary used by local and clustered deployments.
 - `docs/modes.md` lists four modes: prototype / deck / template / design-system. We ship skills for the first two; the picker already filters by `mode`.

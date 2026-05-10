@@ -1,6 +1,6 @@
 # Open Design
 
-> **The open-source alternative to [Claude Design][cd].** Local-first, web-deployable, BYOK at every layer — **16 coding-agent CLIs** auto-detected on your `PATH` (Claude Code, Codex, Devin for Terminal, Cursor Agent, Gemini CLI, OpenCode, Qwen, Qoder CLI, GitHub Copilot CLI, Hermes, Kimi, Pi, Kiro, Kilo, Mistral Vibe, DeepSeek TUI) become the design engine, driven by **31 composable Skills** and **72 brand-grade Design Systems**. No CLI? An OpenAI-compatible BYOK proxy is the same loop minus the spawn.
+> **The open-source alternative to [Claude Design][cd].** Local-first, deployable, BYOK at every layer — a Node.js daemon hosts the **Pi SDK coding agent** directly, driven by **31 composable Skills** and **72 brand-grade Design Systems**. No local coding-agent CLI or PATH setup required; production can split API and Pi workers with Redis + Postgres.
 
 <p align="center">
   <img src="docs/assets/banner.png" alt="Open Design — editorial cover: design with the agent on your laptop" width="100%" />
@@ -20,7 +20,7 @@
   <a href="https://open-design.ai/"><img alt="Download" src="https://img.shields.io/badge/download-open--design.ai-ff6b35?style=flat-square" /></a>
   <a href="https://github.com/nexu-io/open-design/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/nexu-io/open-design?style=flat-square&color=blueviolet&label=release&include_prereleases&display_name=tag" /></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square" /></a>
-  <a href="#supported-coding-agents"><img alt="Agents" src="https://img.shields.io/badge/agents-16%20CLIs%20%2B%20BYOK%20proxy-black?style=flat-square" /></a>
+  <a href="#supported-coding-agents"><img alt="Agents" src="https://img.shields.io/badge/agent-Pi%20SDK%20%2B%20BYOK%20proxy-black?style=flat-square" /></a>
   <a href="#design-systems"><img alt="Design systems" src="https://img.shields.io/badge/design%20systems-72-orange?style=flat-square" /></a>
   <a href="#skills"><img alt="Skills" src="https://img.shields.io/badge/skills-31-teal?style=flat-square" /></a>
   <a href="https://discord.gg/qhbcCH8Am4"><img alt="Discord" src="https://img.shields.io/badge/discord-join-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
@@ -36,7 +36,7 @@
 
 Anthropic's [Claude Design][cd] (released 2026-04-17, Opus 4.7) showed what happens when an LLM stops writing prose and starts shipping design artifacts. It went viral — and stayed closed-source, paid-only, cloud-only, locked to Anthropic's model and Anthropic's skills. There is no checkout, no self-host, no Vercel deploy, no swap-in-your-own-agent.
 
-**Open Design (OD) is the open-source alternative.** Same loop, same artifact-first mental model, none of the lock-in. We don't ship an agent — the strongest coding agents already live on your laptop. We wire them into a skill-driven design workflow that runs locally with `pnpm tools-dev`, can deploy the web layer to Vercel, and stays BYOK at every layer.
+**Open Design (OD) is the open-source alternative.** Same loop, same artifact-first mental model, none of the lock-in. The Node.js daemon hosts Pi directly, wires it into a skill-driven design workflow, and can move execution to worker processes for cluster deployments. It runs locally with `pnpm tools-dev`, can deploy the web layer to Vercel, and stays BYOK at every layer.
 
 Type `make me a magazine-style pitch deck for our seed round`. The interactive question form pops up before the model improvises a single pixel. The agent picks one of five curated visual directions. A live `TodoWrite` plan streams into the UI. The daemon builds a real on-disk project folder with a seed template, layout library, and self-check checklist. The agent reads them — pre-flight enforced — runs a five-dimensional critique against its own output, and emits a single `<artifact>` that renders in a sandboxed iframe seconds later.
 
@@ -46,21 +46,21 @@ OD stands on four open-source shoulders:
 
 - [**`alchaincyf/huashu-design`**](https://github.com/alchaincyf/huashu-design) — the design-philosophy compass. Junior-Designer workflow, the 5-step brand-asset protocol, the anti-AI-slop checklist, the 5-dimensional self-critique, and the "5 schools × 20 design philosophies" idea behind our direction picker — all distilled into [`apps/daemon/src/prompts/discovery.ts`](apps/daemon/src/prompts/discovery.ts).
 - [**`op7418/guizang-ppt-skill`**](https://github.com/op7418/guizang-ppt-skill) — the deck mode. Bundled verbatim under [`skills/guizang-ppt/`](skills/guizang-ppt/) with original LICENSE preserved; magazine-style layouts, WebGL hero, P0/P1/P2 checklists.
-- [**`OpenCoworkAI/open-codesign`**](https://github.com/OpenCoworkAI/open-codesign) — the UX north star and our closest peer. The first open-source Claude-Design alternative. We borrow its streaming-artifact loop, its sandboxed-iframe preview pattern (vendored React 18 + Babel), its live agent panel (todos + tool calls + interruptible generation), and its five-format export list (HTML / PDF / PPTX / ZIP / Markdown). We deliberately diverge on form factor — they are a desktop Electron app bundling [`pi-ai`][piai]; we are a web app + local daemon that delegates to your existing CLI.
-- [**`multica-ai/multica`**](https://github.com/multica-ai/multica) — the daemon-and-runtime architecture. PATH-scan agent detection, the local daemon as the only privileged process, the agent-as-teammate worldview.
+- [**`OpenCoworkAI/open-codesign`**](https://github.com/OpenCoworkAI/open-codesign) — the UX north star and our closest peer. The first open-source Claude-Design alternative. We borrow its streaming-artifact loop, its sandboxed-iframe preview pattern (vendored React 18 + Babel), its live agent panel (todos + tool calls + interruptible generation), and its five-format export list (HTML / PDF / PPTX / ZIP / Markdown). We deliberately diverge on form factor — they are a desktop Electron app bundling [`pi-ai`][piai]; we are a web app + Node.js daemon that hosts Pi SDK directly and can hand runs to workers.
+- [**`multica-ai/multica`**](https://github.com/multica-ai/multica) — the daemon-and-runtime architecture. The local daemon as the only privileged process, agent execution as a bounded runtime contract, and the agent-as-teammate worldview.
 
 ## At a glance
 
 | | What you get |
 |---|---|
-| **Coding-agent CLIs (16)** | Claude Code · Codex CLI · Devin for Terminal · Cursor Agent · Gemini CLI · OpenCode · Qwen Code · Qoder CLI · GitHub Copilot CLI · Hermes (ACP) · Kimi CLI (ACP) · Pi (RPC) · Kiro CLI (ACP) · Kilo (ACP) · Mistral Vibe CLI (ACP) · DeepSeek TUI — auto-detected on `PATH`, swap with one click |
+| **Coding agent** | Embedded Pi SDK hosted by the Node.js daemon — no local coding-agent CLI discovery, no GUI-inherited PATH surprises, same event stream for text, thinking, tool calls, and tool results |
 | **BYOK fallback** | Protocol-specific API proxy at `/api/proxy/{anthropic,openai,azure,google}/stream` — paste `baseUrl` + `apiKey` + `model`, choose Anthropic / OpenAI / Azure OpenAI / Google Gemini, and the daemon normalizes SSE back to the same chat stream. Internal-IP/SSRF blocked at the daemon edge. |
 | **Design systems built-in** | **129** — 2 hand-authored starters + 70 product systems (Linear, Stripe, Vercel, Airbnb, Tesla, Notion, Anthropic, Apple, Cursor, Supabase, Figma, Xiaohongshu, …) from [`awesome-design-md`][acd2], plus 57 design skills from [`awesome-design-skills`][ads] added directly under `design-systems/` |
 | **Skills built-in** | **31** — 27 in `prototype` mode (web-prototype, saas-landing, dashboard, mobile-app, gamified-app, social-carousel, magazine-poster, dating-web, sprite-animation, motion-frames, critique, tweaks, wireframe-sketch, pm-spec, eng-runbook, finance-report, hr-onboarding, invoice, kanban-board, team-okrs, …) + 4 in `deck` mode (`guizang-ppt` · `simple-deck` · `replit-deck` · `weekly-update`). Grouped in the picker by `scenario`: design / marketing / operation / engineering / product / finance / hr / sale / personal. |
 | **Media generation** | Image · video · audio surfaces ship alongside the design loop. **gpt-image-2** (Azure / OpenAI) for posters, avatars, infographics, illustrated maps · **Seedance 2.0** (ByteDance) for cinematic 15s text-to-video and image-to-video · **HyperFrames** ([heygen-com/hyperframes](https://github.com/heygen-com/hyperframes)) for HTML→MP4 motion graphics (product reveals, kinetic typography, data charts, social overlays, logo outros). **93** ready-to-replicate prompts gallery — 43 gpt-image-2 + 39 Seedance + 11 HyperFrames — under [`prompt-templates/`](prompt-templates/), with preview thumbnails and source attribution. Same chat surface as code; outputs a real `.mp4` / `.png` chip into the project workspace. |
 | **Visual directions** | 5 curated schools (Editorial Monocle · Modern Minimal · Warm Soft · Tech Utility · Brutalist Experimental) — each ships a deterministic OKLch palette + font stack ([`apps/daemon/src/prompts/directions.ts`](apps/daemon/src/prompts/directions.ts)) |
 | **Device frames** | iPhone 15 Pro · Pixel · iPad Pro · MacBook · Browser Chrome — pixel-accurate, shared across skills under [`assets/frames/`](assets/frames/) |
-| **Agent runtime** | Local daemon spawns the CLI in your project folder — agent gets real `Read`, `Write`, `Bash`, `WebFetch` against a real on-disk environment, with Windows `ENAMETOOLONG` fallbacks (stdin / prompt-file) on every adapter |
+| **Agent runtime** | Local daemon hosts Pi in your project folder — agent gets project-bounded `Read`, `Write`, `Edit`, and `Bash` tools through `ProjectFs`, and Compose can move execution to separate workers |
 | **Imports** | Drop a [Claude Design][cd] export ZIP onto the welcome dialog — `POST /api/import/claude-design` parses it into a real project so your agent can keep editing where Anthropic left off |
 | **Persistence** | SQLite at `.od/app.sqlite`: projects · conversations · messages · tabs · saved templates. Reopen tomorrow, todo card and open files are exactly where you left them. |
 | **Lifecycle** | One entry point: `pnpm tools-dev` (start / stop / run / status / logs / inspect / check) — boots daemon + web (+ desktop) under typed sidecar stamps |
@@ -219,9 +219,9 @@ Adding a skill takes one folder. Read [`docs/skills-protocol.md`](docs/skills-pr
 
 ## Six load-bearing ideas
 
-### 1 · We don't ship an agent. Yours is good enough.
+### 1 · Pi is hosted by the daemon.
 
-The daemon scans your `PATH` for [`claude`](https://docs.anthropic.com/en/docs/claude-code), [`codex`](https://github.com/openai/codex), `devin`, [`cursor-agent`](https://www.cursor.com/cli), [`gemini`](https://github.com/google-gemini/gemini-cli), [`opencode`](https://opencode.ai/), [`qwen`](https://github.com/QwenLM/qwen-code), `qodercli`, [`copilot`](https://github.com/features/copilot/cli), `hermes`, `kimi`, [`pi`](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent), [`kiro-cli`](https://kiro.dev), `kilo`, [`vibe-acp`](https://github.com/mistralai/mistral-vibe), and `deepseek` on startup. Whichever ones it finds become candidate design engines — driven over stdio with one adapter per CLI, swappable from the model picker. Inspired by [`multica`](https://github.com/multica-ai/multica) and [`cc-switch`](https://github.com/farion1231/cc-switch). No CLI installed? The API mode is the same pipeline minus the spawn — choose Anthropic, OpenAI-compatible, Azure OpenAI, or Google Gemini and the daemon forwards normalized SSE chunks back. Loopback is allowed for local LLM providers such as Ollama and LM Studio; non-loopback private, link-local, CGNAT, multicast, reserved, and redirect targets are rejected at the daemon edge.
+Open Design no longer asks the user's machine to provide a coding-agent CLI. The daemon embeds Pi through `@earendil-works/pi-coding-agent`, owns model selection, streams Pi thinking/tool events into the UI, and keeps file access behind `ProjectFs`. For cluster deployments the same `AgentRuntime` boundary can enqueue jobs to workers while keeping the browser contract unchanged. BYOK API mode remains available for provider-proxy flows.
 
 ### 2 · Skills are files, not plugins.
 
@@ -239,7 +239,7 @@ This is the **Junior-Designer mode** distilled from [`huashu-design`](https://gi
 
 ### 5 · The daemon makes the agent feel like it's on your laptop, because it is.
 
-The daemon spawns the CLI with `cwd` set to the project's artifact folder under `.od/projects/<id>/`. The agent gets `Read`, `Write`, `Bash`, `WebFetch` — real tools against a real filesystem. It can `Read` the skill's `assets/template.html`, `grep` your CSS for hex values, write a `brand-spec.md`, drop generated images, and produce `.pptx` / `.zip` / `.pdf` files that show up in the file workspace as download chips when the turn ends. Sessions, conversations, messages, tabs persist in a local SQLite DB — pop the project open tomorrow and the agent's todo card is right where you left it.
+The daemon creates a project workspace under `.od/projects/<id>/` and gives Pi bounded `Read`, `Write`, `Edit`, and `Bash` tools there. It can read the active skill's side files, inspect generated CSS, write `brand-spec.md`, drop images, and produce `.pptx` / `.zip` / `.pdf` files that show up in the file workspace as download chips when the turn ends. Sessions, conversations, messages, tabs, and run events persist locally; cluster mode can move run history to Postgres and dispatch to Redis-backed workers.
 
 ### 6 · The prompt stack is the product.
 
@@ -292,7 +292,7 @@ Every layer is composable. Every layer is a file you can edit. Read [`apps/daemo
 |---|---|
 | Frontend | Next.js 16 App Router + React 18 + TypeScript, Vercel-deployable |
 | Daemon | Node 24 · Express · SSE streaming · `better-sqlite3`; tables: `projects` · `conversations` · `messages` · `tabs` · `templates` |
-| Agent transport | `child_process.spawn`; typed-event parsers for `claude-stream-json` (Claude Code), `qoder-stream-json` (Qoder CLI), `copilot-stream-json` (Copilot), `json-event-stream` per-CLI parsers (Codex / Gemini / OpenCode / Cursor Agent), `acp-json-rpc` (Devin / Hermes / Kimi / Kiro / Kilo / Mistral Vibe via Agent Client Protocol), `pi-rpc` (Pi via stdio JSON-RPC), `plain` (Qwen Code / DeepSeek TUI) |
+| Agent transport | Embedded Pi SDK through `AgentRuntime`; inline for local dev, queued worker mode for Compose/cluster deployments, with Pi thinking/tool events mirrored to the same SSE stream |
 | BYOK proxy | `POST /api/proxy/{anthropic,openai,azure,google}/stream` → provider-specific upstream APIs, normalized `delta/end/error` SSE; allows loopback local LLM providers, rejects non-loopback private/link-local/CGNAT/multicast/reserved hosts, and disables upstream redirects at the daemon edge |
 | Storage | Plain files in `.od/projects/<id>/` + SQLite at `.od/app.sqlite` + credentials at `.od/media-config.json` (gitignored, auto-created). `OD_DATA_DIR=<dir>` relocates all daemon data (used for test isolation and read-only-install setups); `OD_MEDIA_CONFIG_DIR=<dir>` further narrows the override to just `media-config.json` for setups that want to keep API keys outside the data dir |
 | Preview | Sandboxed iframe via `srcdoc` + per-skill `<artifact>` parser ([`apps/web/src/artifacts/parser.ts`](apps/web/src/artifacts/parser.ts)) |
@@ -378,7 +378,7 @@ For desktop/background startup, fixed-port restarts, and media generation dispat
 
 The first load:
 
-1. Detects which agent CLIs you have on `PATH` and picks one automatically.
+1. Selects the daemon-hosted Pi SDK agent.
 2. Loads 31 skills + 72 design systems.
 3. Pops the welcome dialog so you can paste an Anthropic key (only needed for the BYOK fallback path).
 4. **Auto-creates `./.od/`** — the local runtime folder for the SQLite project DB, per-project artifacts, and saved renders. There is no `od init` step; the daemon `mkdir`s everything it needs on boot.
@@ -650,8 +650,8 @@ open-design/
 │   │   ├── src/                   ← TypeScript daemon source
 │   │   │   ├── cli.ts             ← `od` bin source, compiled to dist/cli.js
 │   │   │   ├── server.ts          ← /api/* routes (projects, chat, files, exports)
-│   │   │   ├── agents.ts          ← PATH scanner + per-CLI argv builders
-│   │   │   ├── claude-stream.ts   ← streaming JSON parser for Claude Code stdout
+│   │   │   ├── agents.ts          ← embedded Pi SDK agent catalog
+│   │   │   ├── agent-runtime.ts   ← inline/worker Pi runtime boundary
 │   │   │   ├── skills.ts          ← SKILL.md frontmatter loader
 │   │   │   └── db.ts              ← SQLite schema (projects/messages/templates/tabs)
 │   │   ├── sidecar/               ← tools-dev daemon sidecar wrapper
@@ -857,13 +857,13 @@ Pattern is the same as the rest: pick a template, edit the brief, send. The agen
 
 The chat / artifact loop gets the spotlight, but a handful of less-visible capabilities are already wired and worth knowing before you compare OD to anything else:
 
-- **Claude Design ZIP import.** Drop an export from claude.ai onto the welcome dialog. `POST /api/import/claude-design` extracts it into a real `.od/projects/<id>/`, opens the entry file as a tab, and stages a continue-where-Anthropic-left-off prompt for your local agent. No re-prompting, no "ask the model to re-create what we just had". ([`apps/daemon/src/server.ts`](apps/daemon/src/server.ts) — `/api/import/claude-design`)
+- **Claude Design ZIP import.** Drop an export from claude.ai onto the welcome dialog. `POST /api/import/claude-design` extracts it into a real `.od/projects/<id>/`, opens the entry file as a tab, and stages a continue-where-Anthropic-left-off prompt for the Pi agent. No re-prompting, no "ask the model to re-create what we just had". ([`apps/daemon/src/server.ts`](apps/daemon/src/server.ts) — `/api/import/claude-design`)
 - **Multi-provider BYOK proxy.** `POST /api/proxy/{anthropic,openai,azure,google}/stream` takes `{ baseUrl, apiKey, model, messages }`, builds the provider-specific upstream request, normalizes SSE chunks into `delta/end/error`, and allows loopback local LLM providers while rejecting non-loopback private, link-local, CGNAT, multicast, reserved, and redirect targets to head off SSRF. OpenAI-compatible covers OpenAI, Azure AI Foundry `/openai/v1`, DeepSeek, Groq, MiMo, OpenRouter, Ollama, LM Studio, and self-hosted vLLM; Azure OpenAI adds deployment URL + `api-version`; Google uses Gemini `:streamGenerateContent`.
 - **User-saved templates.** Once you like a render, `POST /api/templates` snapshots the HTML + metadata into the SQLite `templates` table. The next project picks it from a "your templates" row in the picker — same surface as the shipped 31, but yours.
 - **Tab persistence.** Every project remembers its open files and active tab in the `tabs` table. Reopen the project tomorrow and the workspace looks exactly the way you left it.
 - **Artifact lint API.** `POST /api/artifacts/lint` runs structural checks on a generated artifact (broken `<artifact>` framing, missing required side files, stale palette tokens) and returns findings the agent can read back into its next turn. The five-dim self-critique uses this to ground its score in real evidence, not vibes.
 - **Sidecar protocol + desktop automation.** Daemon, web, and desktop processes carry typed five-field stamps (`app · mode · namespace · ipc · source`) and expose a JSON-RPC IPC channel at `/tmp/open-design/ipc/<namespace>/<app>.sock`. `tools-dev inspect desktop status \| eval \| screenshot` drives that channel, so headless E2E works against a real Electron shell without bespoke harnesses ([`packages/sidecar-proto/`](packages/sidecar-proto/), [`apps/desktop/src/main/`](apps/desktop/src/main/)).
-- **Windows-friendly spawning.** Every adapter that would otherwise blow `CreateProcess`'s ~32 KB argv limit on long composed prompts (Codex, Gemini, OpenCode, Cursor Agent, Qwen, Qoder CLI, Pi) feeds the prompt over stdin instead. Claude Code and Copilot keep `-p`; the daemon falls back to a temp prompt-file when even that overflows.
+- **Worker-friendly execution.** Long prompts and tool access now cross a single `AgentRuntime` boundary. Local dev can run Pi inline, while cluster deployments enqueue the same run for an `agent-worker` backed by Redis and Postgres.
 - **Per-namespace runtime data.** `OD_DATA_DIR` and `--namespace` give you fully isolated `.od/`-style trees, so Playwright, beta channels, and your real projects never share a SQLite file.
 
 ## Anti-AI-slop machinery
@@ -887,7 +887,7 @@ The whole machinery below is the [`huashu-design`](https://github.com/alchaincyf
 | Agent runtime | Bundled (Opus 4.7) | Bundled ([`pi-ai`][piai]) | **Delegated to user's existing CLI** |
 | Skills | Proprietary | 12 custom TS modules + `SKILL.md` | **31 file-based [`SKILL.md`][skill] bundles, droppable** |
 | Design system | Proprietary | `DESIGN.md` (v0.2 roadmap) | **`DESIGN.md` × 129 systems shipped** |
-| Provider flexibility | Anthropic only | 7+ via [`pi-ai`][piai] | **16 CLI adapters + OpenAI-compatible BYOK proxy** |
+| Provider flexibility | Anthropic only | 7+ via [`pi-ai`][piai] | **Pi SDK model registry + OpenAI-compatible BYOK proxy** |
 | Init question form | ❌ | ❌ | **✅ Hard rule, turn 1** |
 | Direction picker | ❌ | ❌ | **✅ 5 deterministic directions** |
 | Live todo progress + tool stream | ❌ | ✅ | **✅** (UX pattern from open-codesign) |
@@ -910,31 +910,18 @@ The whole machinery below is the [`huashu-design`](https://github.com/alchaincyf
 [guizang]: https://github.com/op7418/guizang-ppt-skill
 [skill]: https://docs.anthropic.com/en/docs/claude-code/skills
 
-## Supported coding agents
+## Supported coding agent
 
-Auto-detected from `PATH` on daemon boot. No config required. Streaming dispatch lives in [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts) (`AGENT_DEFS`); per-CLI parsers live alongside it. Models are populated either by probing `<bin> --list-models` / `<bin> models` / ACP handshake, or from a curated fallback list when the CLI doesn't expose a list.
+Open Design ships one daemon-hosted coding agent: Pi SDK. The catalog exposed by
+[`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts) keeps the existing web
+contract shape but points at `node:pi-sdk` / `embedded`; it never resolves or
+spawns a user PATH binary. Models are populated from Pi's model registry with a
+curated fallback list when registry discovery is unavailable.
 
-| Agent | Bin | Stream format | Argv shape (composed prompt path) |
-|---|---|---|---|
-| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `claude` | `claude-stream-json` (typed events) | `claude -p <prompt> --output-format stream-json --verbose [--include-partial-messages] [--add-dir …] --permission-mode bypassPermissions` |
-| [Codex CLI](https://github.com/openai/codex) | `codex` | `json-event-stream` + `codex` parser | `codex exec --json --skip-git-repo-check --sandbox workspace-write -c sandbox_workspace_write.network_access=true [-C cwd] [--add-dir …] [--model …] [-c model_reasoning_effort=…]` (prompt on stdin) |
-| Devin for Terminal | `devin` | `acp-json-rpc` | `devin --permission-mode dangerous --respect-workspace-trust false acp` |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `gemini` | `json-event-stream` + `gemini` parser | `GEMINI_CLI_TRUST_WORKSPACE=true gemini --output-format stream-json --yolo [--model …]` (prompt on stdin) |
-| [OpenCode](https://opencode.ai/) | `opencode` | `json-event-stream` + `opencode` parser | `opencode run --format json --dangerously-skip-permissions [--model …] -` (prompt on stdin) |
-| [Cursor Agent](https://www.cursor.com/cli) | `cursor-agent` | `json-event-stream` + `cursor-agent` parser | `cursor-agent --print --output-format stream-json --stream-partial-output --force --trust [--workspace cwd] [--model …] -` (prompt on stdin) |
-| [Qwen Code](https://github.com/QwenLM/qwen-code) | `qwen` | `plain` (raw stdout chunks) | `qwen --yolo [--model …] -` (prompt on stdin) |
-| Qoder CLI | `qodercli` | `qoder-stream-json` (typed events) | `qodercli -p --output-format stream-json --permission-mode bypass_permissions [--cwd cwd] [--model …] [--add-dir …]` (prompt on stdin) |
-| [GitHub Copilot CLI](https://github.com/features/copilot/cli) | `copilot` | `copilot-stream-json` (typed events) | `copilot -p <prompt> --allow-all-tools --output-format json [--model …] [--add-dir …]` |
-| [Hermes](https://github.com/eqlabs/hermes) | `hermes` | `acp-json-rpc` (Agent Client Protocol) | `hermes acp --accept-hooks` |
-| Kimi CLI | `kimi` | `acp-json-rpc` | `kimi acp` |
-| [Kiro CLI](https://kiro.dev) | `kiro-cli` | `acp-json-rpc` | `kiro-cli acp` |
-| Kilo | `kilo` | `acp-json-rpc` | `kilo acp` |
-| [Mistral Vibe CLI](https://github.com/mistralai/mistral-vibe) | `vibe-acp` | `acp-json-rpc` | `vibe-acp` |
-| DeepSeek TUI | `deepseek` | `plain` (raw stdout chunks) | `deepseek exec --auto [--model …] <prompt>` (prompt as positional arg) |
-| [Pi](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) | `pi` | `pi-rpc` (stdio JSON-RPC) | `pi --mode rpc [--model …] [--thinking …]` (prompt sent as RPC `prompt` command) |
-| **Multi-provider BYOK** | n/a | SSE normalization | `POST /api/proxy/{provider}/stream` → Anthropic / OpenAI-compatible / Azure OpenAI / Gemini; SSRF-guarded with loopback local providers allowed, non-loopback internal ranges blocked, and upstream redirects disabled |
-
-Adding a new CLI is one entry in [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts). Streaming format is one of `claude-stream-json`, `qoder-stream-json`, `copilot-stream-json`, `json-event-stream` (with a per-CLI `eventParser`), `acp-json-rpc`, `pi-rpc`, or `plain`.
+BYOK proxy mode is still available through
+`POST /api/proxy/{provider}/stream` for Anthropic, OpenAI-compatible, Azure
+OpenAI, and Gemini providers. It is SSRF-guarded with loopback local providers
+allowed, non-loopback internal ranges blocked, and upstream redirects disabled.
 
 ## References & lineage
 
@@ -945,8 +932,8 @@ Every external project this repo borrows from. Each link goes to the source so y
 | [`Claude Design`][cd] | The closed-source product this repo is the open-source alternative to. |
 | [**`alchaincyf/huashu-design`**](https://github.com/alchaincyf/huashu-design) | The design-philosophy core. Junior-Designer workflow, the 5-step brand-asset protocol, anti-AI-slop checklist, 5-dimensional self-critique, and the "5 schools × 20 design philosophies" library behind our direction picker — all distilled into [`apps/daemon/src/prompts/discovery.ts`](apps/daemon/src/prompts/discovery.ts) and [`apps/daemon/src/prompts/directions.ts`](apps/daemon/src/prompts/directions.ts). |
 | [**`op7418/guizang-ppt-skill`**][guizang] | Magazine-web-PPT skill bundled verbatim under [`skills/guizang-ppt/`](skills/guizang-ppt/) with original LICENSE preserved. Default for deck mode. P0/P1/P2 checklist culture borrowed for every other skill. |
-| [**`multica-ai/multica`**](https://github.com/multica-ai/multica) | The daemon + adapter architecture. PATH-scan agent detection, local daemon as the only privileged process, agent-as-teammate worldview. We adopt the model; we do not vendor the code. |
-| [**`OpenCoworkAI/open-codesign`**][ocod] | The first open-source Claude-Design alternative and our closest peer. UX patterns adopted: streaming-artifact loop, sandboxed-iframe preview (vendored React 18 + Babel), live agent panel (todos + tool calls + interruptible), five-format export list (HTML/PDF/PPTX/ZIP/Markdown), local-first storage hub, `SKILL.md` taste-injection, and the first pass of comment-mode preview annotations. UX patterns still on our roadmap: full surgical-edit reliability and AI-emitted tweaks panel. **We deliberately do not vendor [`pi-ai`][piai]** — open-codesign bundles it as the agent runtime; we delegate to whichever CLI the user already has. |
+| [**`multica-ai/multica`**](https://github.com/multica-ai/multica) | The daemon/runtime architecture lineage: local daemon as the privileged process and agent-as-teammate worldview. The current implementation replaces PATH scanning with an embedded Pi SDK runtime. |
+| [**`OpenCoworkAI/open-codesign`**][ocod] | The first open-source Claude-Design alternative and our closest peer. UX patterns adopted: streaming-artifact loop, sandboxed-iframe preview (vendored React 18 + Babel), live agent panel (todos + tool calls + interruptible), five-format export list (HTML/PDF/PPTX/ZIP/Markdown), local-first storage hub, `SKILL.md` taste-injection, and the first pass of comment-mode preview annotations. UX patterns still on our roadmap: full surgical-edit reliability and AI-emitted tweaks panel. |
 | [`VoltAgent/awesome-claude-design`][acd] / [`awesome-design-md`][acd2] | Source of the 9-section `DESIGN.md` schema and 70 product systems imported via [`scripts/sync-design-systems.ts`](scripts/sync-design-systems.ts). |
 | [`bergside/awesome-design-skills`][ads] | Source of 57 design skills added directly as normalized `DESIGN.md` files under `design-systems/`. |
 | [`farion1231/cc-switch`](https://github.com/farion1231/cc-switch) | Inspiration for symlink-based skill distribution across multiple agent CLIs. |
@@ -956,7 +943,7 @@ Long-form provenance write-up — what we take from each, what we deliberately d
 
 ## Roadmap
 
-- [x] Daemon + agent detection (16 CLI adapters) + skill registry + design-system catalog
+- [x] Daemon-hosted Pi SDK agent + skill registry + design-system catalog
 - [x] Web app + chat + question form + 5-direction picker + todo progress + sandboxed preview
 - [x] 31 skills + 72 design systems + 5 visual directions + 5 device frames
 - [x] SQLite-backed projects · conversations · messages · tabs · templates
@@ -995,7 +982,7 @@ Issues, PRs, new skills, and new design systems are all welcome. The highest-lev
 
 - **Add a skill** — drop a folder into [`skills/`](skills/) following the [`SKILL.md`][skill] convention.
 - **Add a design system** — drop a `DESIGN.md` into [`design-systems/<brand>/`](design-systems/) using the 9-section schema.
-- **Wire up a new coding-agent CLI** — one entry in [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts).
+- **Wire up a new agent runtime** — implement the [`AgentRuntime`](apps/daemon/src/agent-runtime.ts) boundary and expose it through [`apps/daemon/src/agents.ts`](apps/daemon/src/agents.ts).
 
 Full walkthrough, bar-for-merging, code style, and what we don't accept → [`CONTRIBUTING.md`](CONTRIBUTING.md) ([Deutsch](CONTRIBUTING.de.md), [Français](CONTRIBUTING.fr.md), [简体中文](CONTRIBUTING.zh-CN.md)).
 
