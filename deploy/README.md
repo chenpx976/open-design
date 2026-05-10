@@ -94,9 +94,11 @@ Useful operations:
 ```bash
 docker compose --profile worker ps
 docker compose --profile worker logs -f open-design agent-worker
+docker compose --profile worker exec agent-worker node apps/daemon/dist/cli.js agent-worker --healthcheck
+curl http://127.0.0.1:${OPEN_DESIGN_PORT:-7456}/api/agent-runtime/status
 docker compose --profile worker exec redis redis-cli llen open-design:agent-jobs:queued
 docker compose --profile worker exec redis redis-cli zcard open-design:agent-jobs:running
-docker compose --profile worker exec postgres psql -U open_design -d open_design -c "select run_id,event,payload_json from agent_run_events order by id desc limit 20;"
+docker compose --profile worker exec postgres psql -U open_design -d open_design -c "select run_id,event,data_json from agent_run_events order by timestamp desc limit 20;"
 docker compose --profile worker down
 docker compose --profile worker down -v # also removes local run/project data
 ```
@@ -104,6 +106,8 @@ docker compose --profile worker down -v # also removes local run/project data
 Failure triage:
 
 - Worker logs include `[agent-worker] run=<id>` lines for claims, retries, and terminal status.
+- `od agent-worker --healthcheck` verifies the worker can reach the configured run store and queue without claiming work.
+- `/api/agent-runtime/status` reports queue depth, running jobs, retryable jobs, terminal job counts, and run counts without exposing prompts or file contents.
 - Redis `open-design:agent-jobs:queued` is pending depth; `open-design:agent-jobs:running` is leased work.
 - Failed runs write an `end` event with `status: "failed"` to Postgres and the job hash ends with `status=failed` after `OPEN_DESIGN_AGENT_WORKER_MAX_ATTEMPTS`.
 - A succeeded run should have Postgres `start`, `agent`, and `end` events and a Redis job hash with `status=succeeded`.

@@ -39,9 +39,8 @@ export { validateBaseUrl } from '@open-design/contracts/api/connectionTest';
 
 // Aggressive but not punitive — happy paths usually return in under 2 s.
 const PROVIDER_TIMEOUT_MS = 12_000;
-// CLI boot time is dominated by adapter auth/session restore; the heavy
-// adapters (Codex, Cursor Agent) regularly take 5–10 s on a cold first
-// run, so 45 s leaves headroom without making a hung child invisible.
+// Agent checks can be slow on a cold first run, so 45 s leaves headroom without
+// making a hung child invisible.
 const AGENT_TIMEOUT_MS = 45_000;
 const AGENT_COMPLETION_DEBOUNCE_MS = 500;
 const AGENT_KILL_GRACE_MS = 2_000;

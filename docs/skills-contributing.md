@@ -160,7 +160,7 @@ pnpm tools-dev run web
 
 If the picker doesn't show your skill, check the daemon stderr — the most common cause is a YAML syntax error in frontmatter. The daemon logs the parse error with the offending line.
 
-You don't need any local agent CLI on your `PATH` to develop a skill. The daemon uses the embedded Pi runtime for agent turns, and BYOK provider proxy mode remains available for model/provider experiments from Settings.
+You don't need any separate local agent binary on your `PATH` to develop a skill. The daemon uses the embedded Pi runtime for agent turns, and BYOK provider proxy mode remains available for model/provider experiments from Settings.
 
 ---
 

@@ -233,7 +233,7 @@ export const COMPOSIO_TOOLKIT_METADATA: Record<string, ComposioToolkitMetadata> 
     category: 'Project management',
   },
   MONDAY_MCP: {
-    description: 'Run monday.com actions through the MCP integration.',
+    description: 'Run monday.com actions through the third-party integration.',
     category: 'Project management',
   },
   CLICKUP: {

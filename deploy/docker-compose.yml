@@ -18,6 +18,8 @@ services:
       OD_AGENT_POSTGRES_URL: ${OPEN_DESIGN_AGENT_POSTGRES_URL:-postgres://open_design:open_design@postgres:5432/open_design}
       OD_AGENT_JOB_QUEUE: ${OPEN_DESIGN_AGENT_JOB_QUEUE:-redis}
       OD_AGENT_REDIS_URL: ${OPEN_DESIGN_AGENT_REDIS_URL:-redis://redis:6379/0}
+      OD_AGENT_BACKEND_CONNECT_ATTEMPTS: ${OPEN_DESIGN_AGENT_BACKEND_CONNECT_ATTEMPTS:-12}
+      OD_AGENT_BACKEND_CONNECT_DELAY_MS: ${OPEN_DESIGN_AGENT_BACKEND_CONNECT_DELAY_MS:-500}
       OD_E2E_FAKE_PI_AGENT: ${OD_E2E_FAKE_PI_AGENT:-}
       OD_DATA_DIR: /app/.od
       OD_PORT: 7456
@@ -63,11 +65,18 @@ services:
       OD_AGENT_POSTGRES_URL: ${OPEN_DESIGN_AGENT_POSTGRES_URL:-postgres://open_design:open_design@postgres:5432/open_design}
       OD_AGENT_JOB_QUEUE: ${OPEN_DESIGN_AGENT_JOB_QUEUE:-redis}
       OD_AGENT_REDIS_URL: ${OPEN_DESIGN_AGENT_REDIS_URL:-redis://redis:6379/0}
+      OD_AGENT_BACKEND_CONNECT_ATTEMPTS: ${OPEN_DESIGN_AGENT_BACKEND_CONNECT_ATTEMPTS:-12}
+      OD_AGENT_BACKEND_CONNECT_DELAY_MS: ${OPEN_DESIGN_AGENT_BACKEND_CONNECT_DELAY_MS:-500}
       OD_AGENT_WORKER_MAX_ATTEMPTS: ${OPEN_DESIGN_AGENT_WORKER_MAX_ATTEMPTS:-3}
       OD_AGENT_WORKER_LEASE_MS: ${OPEN_DESIGN_AGENT_WORKER_LEASE_MS:-120000}
       OD_AGENT_WORKER_HEARTBEAT_MS: ${OPEN_DESIGN_AGENT_WORKER_HEARTBEAT_MS:-30000}
       OD_AGENT_WORKER_MAX_JOB_MS: ${OPEN_DESIGN_AGENT_WORKER_MAX_JOB_MS:-900000}
       OD_E2E_FAKE_PI_AGENT: ${OD_E2E_FAKE_PI_AGENT:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     volumes:
       - open_design_data:/app/.od
     read_only: true
@@ -77,6 +86,12 @@ services:
       - no-new-privileges:true
     mem_limit: ${OPEN_DESIGN_WORKER_MEM_LIMIT:-768m}
     pids_limit: 256
+    healthcheck:
+      test: ["CMD", "node", "apps/daemon/dist/cli.js", "agent-worker", "--healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   redis:
     profiles:

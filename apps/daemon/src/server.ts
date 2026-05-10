@@ -16,7 +16,6 @@ import {
   shouldRenderCodexImagegenOverride,
 } from './prompts/system.js';
 import { expandHomePrefix, resolveProjectRelativePath } from './home-expansion.js';
-import { SIDECAR_DEFAULTS, SIDECAR_ENV } from '@open-design/sidecar-proto';
 import {
   detectAgents,
   getAgentDef,
@@ -92,7 +91,6 @@ import {
   validateSchedule as validateRoutineSchedule,
   validateTarget as validateRoutineTarget,
 } from './routines.js';
-import { buildMcpInstallPayload } from './mcp-install-info.js';
 import {
   buildProjectArchive,
   buildBatchArchive,
@@ -1896,6 +1894,24 @@ export async function startServer({
     res.json({ ok: true, version: versionInfo.version });
   });
 
+  app.get('/api/agent-runtime/status', async (_req, res) => {
+    try {
+      const [runs, queue] = await Promise.all([
+        agentRunStore.getRunStats ? agentRunStore.getRunStats() : Promise.resolve(null),
+        agentJobQueue.getStats ? agentJobQueue.getStats() : Promise.resolve(null),
+      ]);
+      res.json({
+        ok: true,
+        runtime: agentRuntime.id,
+        executionMode: agentRuntime.executionMode,
+        runs,
+        queue,
+      });
+    } catch (err) {
+      sendApiError(res, 503, 'AGENT_RUNTIME_STATUS_UNAVAILABLE', String(err && err.message ? err.message : err));
+    }
+  });
+
   app.get('/api/version', async (_req, res) => {
     const version = await readCurrentAppVersionInfo();
     res.json({ version });
@@ -1929,9 +1945,8 @@ export async function startServer({
   // ---- Projects (DB-backed) -------------------------------------------------
 
   // Soft "what is the user looking at right now in Open Design?" channel. The
-  // web UI POSTs the current project + file on every route change;
-  // the MCP surface reads it so a coding agent in another repo can
-  // resolve "the design I have open" without the user typing the
+  // web UI POSTs the current project + file on every route change so local
+  // features can resolve "the design I have open" without the user typing the
   // project id. In-memory only - daemon restart clears it.
   /** @type {{ projectId: string; fileName: string | null; ts: number } | null} */
   let activeContext = null;
@@ -1939,10 +1954,8 @@ export async function startServer({
 
   // Active context is private to the local machine. The daemon binds
   // 0.0.0.0 by default, so without an origin check a peer on the LAN
-  // could read what the user is currently looking at (GET) or spoof
-  // it to redirect MCP fallbacks (POST). The web proxies same-origin
-  // and the MCP runs in-process via 127.0.0.1, so both legitimate
-  // callers pass the check.
+  // could read what the user is currently looking at (GET) or spoof it
+  // (POST). The web proxies same-origin, so legitimate callers pass the check.
   app.post('/api/active', (req, res) => {
     if (!isLocalSameOrigin(req, resolvedPort)) {
       return res.status(403).json({ error: 'cross-origin request rejected' });
@@ -1988,71 +2001,6 @@ export async function startServer({
       ts: activeContext.ts,
       ageMs: Date.now() - activeContext.ts,
     });
-  });
-
-  // Surfaces the absolute paths to the daemon's Node-compatible runtime and
-  // CLI entry so the Settings → MCP server panel can render snippets that work
-  // even when `od` isn't on the user's PATH (the common case for source clones
-  // - and macOS/Linux ship a /usr/bin/od octal-dump tool that shadows ours
-  // anyway). Cached for 5s because the panel pings on every open and these
-  // paths cannot change without a daemon restart.
-  const INSTALL_INFO_TTL_MS = 5000;
-  let installInfoCache: { t: number; payload: object } | null = null;
-
-  app.get('/api/mcp/install-info', (req, res) => {
-    if (!isLocalSameOrigin(req, resolvedPort)) {
-      return res.status(403).json({ error: 'cross-origin request rejected' });
-    }
-    const now = Date.now();
-    if (installInfoCache && now - installInfoCache.t < INSTALL_INFO_TTL_MS) {
-      return res.json(installInfoCache.payload);
-    }
-    // process.execPath is the absolute path to the Node-compatible
-    // runtime that is running the daemon RIGHT NOW. In packaged builds
-    // this may be Electron running with ELECTRON_RUN_AS_NODE=1 rather
-    // than a separate bundled Node binary; the helper surfaces that env
-    // requirement with the command so IDE-spawned MCP clients can
-    // reproduce the same mode from a minimal OS launcher environment.
-    const cliPath = OD_BIN;
-    // The daemon was bootstrapped as a sidecar (tools-dev, packaged) iff
-    // bootstrapSidecarRuntime stamped OD_SIDECAR_IPC_PATH into the env.
-    // In sidecar mode the snippet omits --daemon-url and the spawned
-    // `od mcp` discovers the live URL via the IPC status socket on
-    // every spawn, so the client config survives ephemeral-port
-    // restarts. We also propagate OD_SIDECAR_NAMESPACE (and IPC_BASE
-    // when overridden) so a non-default namespace daemon stays
-    // reachable - the MCP client does not inherit the daemon's env,
-    // so without this the spawned `od mcp` would probe the default
-    // namespace socket and miss. For direct `od` / `od --port X`
-    // launches there is no IPC socket; the helper bakes --daemon-url
-    // so custom ports keep working.
-    const sidecarIpcPath = process.env[SIDECAR_ENV.IPC_PATH];
-    const isSidecarMode = sidecarIpcPath != null && sidecarIpcPath.length > 0;
-    const sidecarEnv: Record<string, string> = {};
-    if (isSidecarMode) {
-      const ns = process.env[SIDECAR_ENV.NAMESPACE];
-      if (ns != null && ns !== SIDECAR_DEFAULTS.namespace) {
-        sidecarEnv[SIDECAR_ENV.NAMESPACE] = ns;
-      }
-      const ipcBase = process.env[SIDECAR_ENV.IPC_BASE];
-      if (ipcBase != null && ipcBase.length > 0) {
-        sidecarEnv[SIDECAR_ENV.IPC_BASE] = ipcBase;
-      }
-    }
-    const payload = buildMcpInstallPayload({
-      cliPath,
-      cliExists: fs.existsSync(cliPath),
-      execPath: process.execPath,
-      nodeExists: fs.existsSync(process.execPath),
-      port: resolvedPort,
-      platform: process.platform,
-      dataDir: RUNTIME_DATA_DIR,
-      electronAsNode: process.env.ELECTRON_RUN_AS_NODE === '1',
-      isSidecarMode,
-      sidecarEnv,
-    });
-    installInfoCache = { t: now, payload };
-    res.json(payload);
   });
 
   app.get('/api/projects', (_req, res) => {
@@ -6635,6 +6583,10 @@ export async function startServer({
       daemonShutdownStarted = true;
       daemonShuttingDown = true;
       await design.runs.shutdownActive({ graceMs: resolveChatRunShutdownGraceMs() });
+      await Promise.allSettled([
+        agentRunStore.close?.(),
+        agentJobQueue.close?.(),
+      ]);
     };
     let server;
     try {

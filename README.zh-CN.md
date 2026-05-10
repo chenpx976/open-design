@@ -1,6 +1,6 @@
 # Open Design
 
-> **[Claude Design][cd] 的开源替代品。** 本地优先、可部署、每一层都 BYOK —— Node.js daemon 直接托管 **Pi SDK coding agent**，由 **31 个可组合 Skills** 和 **72 套品牌级 Design System** 驱动。不再需要本地 coding-agent CLI 或 PATH 配置；生产部署可以用 Redis + Postgres 拆分 API 与 Pi worker。
+> **[Claude Design][cd] 的开源替代品。** 本地优先、可部署、每一层都 BYOK —— Node.js daemon 直接托管 **Pi SDK coding agent**，由 **31 个可组合 Skills** 和 **72 套品牌级 Design System** 驱动。不再需要单独的本地 agent binary 或 PATH 配置；生产部署可以用 Redis + Postgres 拆分 API 与 Pi worker。
 
 <p align="center">
   <img src="docs/assets/banner.png" alt="Open Design 封面：与本地 AI 智能体共同设计" width="100%" />
@@ -219,7 +219,7 @@ OD 站在四个开源项目的肩膀上：
 
 ### 1 · Pi 由 daemon 托管
 
-Open Design 不再要求用户机器提供 coding-agent CLI。Daemon 通过 `@earendil-works/pi-coding-agent` 内嵌 Pi，负责模型选择、Pi 思考/工具事件流、以及 `ProjectFs` 文件边界。集群部署时，同一个 `AgentRuntime` 边界可以把任务写入队列交给 worker，浏览器协议保持不变。BYOK API mode 仍然保留，用于 provider proxy 场景。
+Open Design 不再要求用户机器提供单独的 agent binary。Daemon 通过 `@earendil-works/pi-coding-agent` 内嵌 Pi，负责模型选择、Pi 思考/工具事件流、以及 `ProjectFs` 文件边界。集群部署时，同一个 `AgentRuntime` 边界可以把任务写入队列交给 worker，浏览器协议保持不变。BYOK API mode 仍然保留，用于 provider proxy 场景。
 
 ### 2 · Skill 是文件，不是插件
 

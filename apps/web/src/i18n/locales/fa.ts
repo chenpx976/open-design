@@ -86,7 +86,7 @@ export const fa: Dict = {
   'settings.testUnknown': 'آزمایش ناموفق بود: {detail}',
   'settings.agentInstall.install': 'نصب',
   'settings.agentInstall.docs': 'مستندات',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': 'برای عامل موردنظر، لینک نصب یا مستندات را باز کنید.',
   'settings.agentInstall.stepAuth':
     'قبل از بازگشت به Open Design، در CLI ارائه‌دهنده احراز هویت کنید (ورود یا افزودن اطلاعات API).',
@@ -137,8 +137,6 @@ export const fa: Dict = {
   'settings.mediaProviders': 'ارائه‌دهندگان رسانه',
   'settings.mediaProvidersHint':
     'کلیدهای API برای تولید تصویر، ویدئو و صدا. به صورت محلی ذخیره و با daemon محلی همگام می‌شود.',
-  'settings.mcpServerTitle': 'سرور MCP',
-  'settings.mcpServerHint': 'Open Design را به‌عنوان سرور MCP برای عامل برنامه‌نویسی خود در دسترس قرار دهید.',
   'settings.mediaProviderApiKey': 'کلید API',
   'settings.mediaProviderBaseUrl': 'آدرس پایه',
   'settings.mediaProviderConfigured': 'پیکربندی شده',

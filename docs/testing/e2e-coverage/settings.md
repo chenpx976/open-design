@@ -54,20 +54,16 @@
 | SET-031 | App 启动时如果本地没有待保存 key，会优先使用 daemon 返回的 Composio 已保存态展示尾号 | `App.connectors.test.tsx` |
 | SET-032 | Settings 保存 Connectors key 时，本地只保留 `apiKeyConfigured/apiKeyTail`，同时把原始 key 同步给 daemon | `App.connectors.test.tsx` |
 | SET-033 | 清空 Connectors 已保存 key 后，会把 cleared composio 配置同步给 daemon | `App.connectors.test.tsx` |
-| SET-034 | MCP server 页面在 daemon 返回 install info 后，会默认渲染 Claude Code 的安装命令、重启提示和能力说明 | `SettingsDialog.execution.test.tsx` |
-| SET-035 | MCP server 页面切换不同 client 后，会联动更新安装方式说明和 snippet 内容 | `SettingsDialog.execution.test.tsx` |
-| SET-036 | MCP server 页面支持复制当前 snippet 到剪贴板，并展示 `Copied` 反馈 | `SettingsDialog.execution.test.tsx` |
-| SET-037 | MCP server 页面在 daemon 无法返回 install info 时，会展示错误提示和降级 snippet 文案 | `SettingsDialog.execution.test.tsx` |
-| SET-038 | 在 Settings 里保存 Connectors key 后，Entry 页 connectors gate 会立即解锁，且本地只保存尾号标记 | `entry-configuration-flows.test.ts` |
-| SET-039 | Language 页面展开下拉后，会渲染完整 locale 列表，并正确标记当前已选语言 | `SettingsDialog.execution.test.tsx` |
-| SET-040 | 在 Language 页面切换语言后，触发器文案会立即更新，同时把 locale 写入 `localStorage` 并同步 `html[lang]` | `SettingsDialog.execution.test.tsx` |
-| SET-041 | 切换到 `fa` 等 RTL 语言后，会同步更新 `html[dir=rtl]`，且语言菜单支持 `Escape` 关闭 | `SettingsDialog.execution.test.tsx` |
-| SET-042 | Language 页面不通过 `Save` 持久化；语言切换即时生效，点击 `Cancel` 也不会回滚已应用 locale | `SettingsDialog.execution.test.tsx` |
-| SET-043 | 每个 locale 都覆盖了所有 curated skill、design system、prompt template id | `localized-content.test.ts` |
-| SET-044 | 每个 locale 都覆盖了要求的展示分类和 prompt tag | `localized-content.test.ts` |
-| SET-045 | Notifications 默认以 `offline` 展示；开启 completion sound 后才会显示成功/失败音选择器，并立即试听默认成功音 | `SettingsDialog.execution.test.tsx` |
-| SET-046 | Notifications 支持切换 success / failure sound，并把声音选择保存到通知配置 | `SettingsDialog.execution.test.tsx` |
-| SET-047 | Desktop notification 在授权成功后会切为 `active`，支持发送测试通知并展示发送结果文案 | `SettingsDialog.execution.test.tsx` |
+| SET-034 | 在 Settings 里保存 Connectors key 后，Entry 页 connectors gate 会立即解锁，且本地只保存尾号标记 | `entry-configuration-flows.test.ts` |
+| SET-035 | Language 页面展开下拉后，会渲染完整 locale 列表，并正确标记当前已选语言 | `SettingsDialog.execution.test.tsx` |
+| SET-036 | 在 Language 页面切换语言后，触发器文案会立即更新，同时把 locale 写入 `localStorage` 并同步 `html[lang]` | `SettingsDialog.execution.test.tsx` |
+| SET-037 | 切换到 `fa` 等 RTL 语言后，会同步更新 `html[dir=rtl]`，且语言菜单支持 `Escape` 关闭 | `SettingsDialog.execution.test.tsx` |
+| SET-038 | Language 页面不通过 `Save` 持久化；语言切换即时生效，点击 `Cancel` 也不会回滚已应用 locale | `SettingsDialog.execution.test.tsx` |
+| SET-039 | 每个 locale 都覆盖了所有 curated skill、design system、prompt template id | `localized-content.test.ts` |
+| SET-040 | 每个 locale 都覆盖了要求的展示分类和 prompt tag | `localized-content.test.ts` |
+| SET-041 | Notifications 默认以 `offline` 展示；开启 completion sound 后才会显示成功/失败音选择器，并立即试听默认成功音 | `SettingsDialog.execution.test.tsx` |
+| SET-042 | Notifications 支持切换 success / failure sound，并把声音选择保存到通知配置 | `SettingsDialog.execution.test.tsx` |
+| SET-043 | Desktop notification 在授权成功后会切为 `active`，支持发送测试通知并展示发送结果文案 | `SettingsDialog.execution.test.tsx` |
 | SET-048 | Desktop notification 在权限被拒绝时，会保持禁用并展示浏览器阻止提示，不显示测试按钮 | `SettingsDialog.execution.test.tsx` |
 | SET-049 | Notifications 编辑后点击 `Cancel` 或点击遮罩关闭时，不会保存未提交修改 | `SettingsDialog.execution.test.tsx` |
 | SET-050 | Appearance 页面把 `System` 作为当前模式回显；它表示“跟随系统”，而不是固定亮/暗主题 | `SettingsDialog.execution.test.tsx` |
@@ -92,7 +88,6 @@
 | ID | 场景 | 原因 |
 | --- | --- | --- |
 | SET-C03 | Media providers 配置被下游图片/视频/音频生成功能实际消费的端到端回归 | 适合自动化，但需要额外 mock 生成请求链路，适合后续补 |
-| SET-C05 | MCP server 的 Cursor deeplink / 多平台路径差异（macOS/Linux/Windows） | 适合自动化，但需要更细的环境 mock 或浏览器 scheme 行为校验，适合后续补 |
 | SET-C06 | Notifications 在 ProjectView 中收到真实任务完成事件后，是否按 success/failure 正确播放声音和发送桌面通知 | 适合自动化，但需要结合流式消息完成态和窗口焦点状态做更完整联动断言 |
 | SET-C07 | `theme=system` 时在系统亮/暗偏好切换下，页面是否通过 `matchMedia` 或宿主环境同步实时跟随 | 适合自动化，但要先确认当前实现是否真的监听系统主题变化 |
 | SET-C08 | Pets 页面上传 sprite、导入 Codex atlas、裁剪单行或保留 full atlas 的文件处理链路 | 适合自动化，但依赖文件输入、图片读取、canvas 裁剪和 atlas 预处理，维护成本更高 |

@@ -60,6 +60,17 @@ export function createSqliteAgentRunPersistence(db) {
     FROM agent_runs
     WHERE id = ?
   `);
+  const runStats = db.prepare(`
+    SELECT status, COUNT(*) AS count
+    FROM agent_runs
+    GROUP BY status
+  `);
+  const recentFailures = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM agent_runs
+    WHERE status = 'failed'
+      AND updated_at >= ?
+  `);
   return {
     createRun(run) {
       insertRun.run({
@@ -118,6 +129,16 @@ export function createSqliteAgentRunPersistence(db) {
         exitCode,
         signal,
       });
+    },
+    getRunStats() {
+      const runsByStatus = {};
+      for (const row of runStats.all()) {
+        runsByStatus[row.status] = Number(row.count) || 0;
+      }
+      return {
+        runsByStatus,
+        recentFailures: Number(recentFailures.get(Date.now() - 24 * 60 * 60 * 1000)?.count) || 0,
+      };
     },
   };
 }
@@ -208,6 +229,24 @@ export function createSqliteAgentJobQueue(db) {
   const getJobAttempts = db.prepare(`
     SELECT attempts FROM agent_run_jobs WHERE id = ?
   `);
+  const jobStats = db.prepare(`
+    SELECT status, COUNT(*) AS count
+    FROM agent_run_jobs
+    GROUP BY status
+  `);
+  const retryableJobs = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM agent_run_jobs
+    WHERE status = 'queued'
+      AND attempts > 0
+  `);
+  const oldestQueued = db.prepare(`
+    SELECT created_at AS createdAt
+    FROM agent_run_jobs
+    WHERE status = 'queued'
+    ORDER BY created_at ASC
+    LIMIT 1
+  `);
 
   return {
     enqueueJob(runId, payload) {
@@ -246,6 +285,21 @@ export function createSqliteAgentJobQueue(db) {
         return;
       }
       updateJobStatus.run({ id: jobId, status: 'failed', error: message, now: Date.now() });
+    },
+    getStats() {
+      const byStatus = {};
+      for (const row of jobStats.all()) {
+        byStatus[row.status] = Number(row.count) || 0;
+      }
+      const oldest = oldestQueued.get();
+      return {
+        queued: byStatus.queued || 0,
+        running: byStatus.running || 0,
+        failed: byStatus.failed || 0,
+        succeeded: byStatus.succeeded || 0,
+        retryable: Number(retryableJobs.get()?.count) || 0,
+        oldestQueuedAgeMs: oldest?.createdAt ? Math.max(0, Date.now() - Number(oldest.createdAt)) : null,
+      };
     },
   };
 }

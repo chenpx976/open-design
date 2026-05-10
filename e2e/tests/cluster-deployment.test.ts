@@ -125,11 +125,15 @@ describe('cluster deployment configuration', () => {
     expect(compose).toContain('OD_AGENT_POSTGRES_URL');
     expect(compose).toContain('OD_AGENT_JOB_QUEUE');
     expect(compose).toContain('OD_AGENT_REDIS_URL');
+    expect(compose).toContain('OD_AGENT_BACKEND_CONNECT_ATTEMPTS');
     expect(compose).toContain('OD_E2E_FAKE_PI_AGENT');
+    expect(compose).toContain('agent-worker\", \"--healthcheck');
+    expect(compose).toContain('condition: service_healthy');
     expect(envExample).toContain('OPEN_DESIGN_AGENT_RUN_STORE=postgres');
     expect(envExample).toContain('OPEN_DESIGN_AGENT_POSTGRES_URL=postgres://open_design:open_design@postgres:5432/open_design');
     expect(envExample).toContain('OPEN_DESIGN_AGENT_JOB_QUEUE=redis');
     expect(envExample).toContain('OPEN_DESIGN_AGENT_REDIS_URL=redis://redis:6379/0');
+    expect(envExample).toContain('OPEN_DESIGN_AGENT_BACKEND_CONNECT_ATTEMPTS=12');
     expect(deployReadme).toContain('docker compose --profile worker up -d --build');
     expect(deployReadme).toContain('OPEN_DESIGN_AGENT_RUN_STORE=postgres');
     expect(deployReadme).toContain('OPEN_DESIGN_AGENT_JOB_QUEUE=redis');
@@ -137,6 +141,7 @@ describe('cluster deployment configuration', () => {
     expect(clusterDoc).toContain('OD_AGENT_RUN_STORE=postgres');
     expect(clusterDoc).toContain('OD_AGENT_JOB_QUEUE=redis');
     expect(clusterDoc).toContain('OD_AGENT_WORKER_MAX_ATTEMPTS');
+    expect(clusterDoc).toContain('/api/agent-runtime/status');
   });
 
   it('boots the Compose cluster and completes a deterministic Pi run', async () => {
@@ -168,6 +173,21 @@ describe('cluster deployment configuration', () => {
       const projectId = `compose-cluster-${Date.now()}`;
       const runId = await createProjectAndRun(baseUrl, projectId);
       await waitForRun(baseUrl, runId);
+
+      const runtimeStatus = await fetch(`${baseUrl}/api/agent-runtime/status`);
+      expect(runtimeStatus.ok).toBe(true);
+      const runtimeStatusBody = await runtimeStatus.json() as {
+        runtime: string;
+        executionMode: string;
+        queue: { queued: number; running: number; failed: number; succeeded: number };
+        runs: { runsByStatus: Record<string, number> };
+      };
+      expect(runtimeStatusBody.runtime).toBe('pi-sdk:sqlite-worker');
+      expect(runtimeStatusBody.executionMode).toBe('worker');
+      expect(runtimeStatusBody.queue.queued).toBe(0);
+      expect(runtimeStatusBody.queue.running).toBe(0);
+      expect(runtimeStatusBody.queue.succeeded).toBeGreaterThanOrEqual(1);
+      expect(runtimeStatusBody.runs.runsByStatus.succeeded).toBeGreaterThanOrEqual(1);
 
       const raw = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/raw/${GENERATED_FILE}`);
       expect(raw.ok).toBe(true);
@@ -233,6 +253,17 @@ describe('cluster deployment configuration', () => {
       const workerLogs = await dockerCompose(projectName, ['logs', '--no-color', 'agent-worker'], env);
       expect(workerLogs.stdout).toContain('[agent-worker]');
       expect(workerLogs.stdout).toMatch(new RegExp(runId));
+
+      const workerHealth = await dockerCompose(projectName, [
+        'exec',
+        '-T',
+        'agent-worker',
+        'node',
+        'apps/daemon/dist/cli.js',
+        'agent-worker',
+        '--healthcheck',
+      ], env);
+      expect(workerHealth.stdout).toContain('"ok":true');
     } finally {
       await dockerCompose(projectName, ['down', '-v', '--remove-orphans'], env).catch(() => {});
     }

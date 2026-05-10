@@ -167,8 +167,6 @@ export interface Dict {
   'settings.modelCustomPlaceholder': string;
   'settings.mediaProviders': string;
   'settings.mediaProvidersHint': string;
-  'settings.mcpServerTitle': string;
-  'settings.mcpServerHint': string;
   'settings.mediaProviderApiKey': string;
   'settings.mediaProviderBaseUrl': string;
   'settings.mediaProviderConfigured': string;
@@ -321,39 +319,6 @@ export interface Dict {
   'settings.orbit.gateLoading': string;
   'settings.orbit.controlsLockedBadge': string;
   'settings.orbit.controlsLockedHint': string;
-
-  // MCP server settings
-  'settings.mcpTitle': string;
-  'settings.mcpHint': string;
-  'settings.mcpDaemonError': string;
-  'settings.mcpBuildDaemon': string;
-  'settings.mcpNodeMissing': string;
-  'settings.mcpBuildHint': string;
-  'settings.mcpMethodCli': string;
-  'settings.mcpInstructionCli': string;
-  'settings.mcpMethodToml': string;
-  'settings.mcpInstructionCodex': string;
-  'settings.mcpMethodOneClick': string;
-  'settings.mcpInstructionCursor': string;
-  'settings.mcpDeeplinkInstallCursor': string;
-  'settings.mcpMethodJson': string;
-  'settings.mcpInstructionCopilot': string;
-  'settings.mcpInstructionAntigravity': string;
-  'settings.mcpInstructionZed': string;
-  'settings.mcpInstructionWindsurf': string;
-  'settings.mcpCopyAria': string;
-  'settings.mcpResolvingFailed': string;
-  'settings.mcpLoadingPaths': string;
-  'settings.mcpCopied': string;
-  'settings.mcpCopy': string;
-  'settings.mcpCursorApproval': string;
-  'settings.mcpRestartNote': string;
-  'settings.mcpRestartDetail': string;
-  'settings.mcpCapabilitiesTitle': string;
-  'settings.mcpCapabilityRead': string;
-  'settings.mcpCapabilityPull': string;
-  'settings.mcpCapabilityDefault': string;
-  'settings.mcpRunningNote': string;
 
   // Notifications (settings + system notifications)
   'settings.notifications': string;

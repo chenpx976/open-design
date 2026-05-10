@@ -189,5 +189,25 @@ export async function createPostgresAgentRunPersistence({
         [runId, status, Date.now(), exitCode, signal],
       );
     },
+    async getRunStats() {
+      const [statusRows, failures] = await Promise.all([
+        pgPool.query('SELECT status, COUNT(*)::int AS count FROM agent_runs GROUP BY status'),
+        pgPool.query(
+          'SELECT COUNT(*)::int AS count FROM agent_runs WHERE status = $1 AND updated_at >= $2',
+          ['failed', Date.now() - 24 * 60 * 60 * 1000],
+        ),
+      ]);
+      const runsByStatus = {};
+      for (const row of statusRows.rows) {
+        runsByStatus[row.status] = Number(row.count) || 0;
+      }
+      return {
+        runsByStatus,
+        recentFailures: Number(failures.rows[0]?.count) || 0,
+      };
+    },
+    async close() {
+      await pgPool.end();
+    },
   };
 }

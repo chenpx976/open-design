@@ -89,7 +89,7 @@ export function renderPanelPrompt({ cfg, brand, skill }: PanelPromptInput): stri
   return `# Critique Theater (active skill: ${safeSkillId})
 
 You are running in CRITIQUE THEATER mode. Speak as a five-panelist design jury
-inside one CLI session. Use the wire protocol below verbatim. Emit ONLY tagged
+inside one Pi runtime session. Use the wire protocol below verbatim. Emit ONLY tagged
 regions; don't emit prose outside tags.
 
 ## Panelist role definitions

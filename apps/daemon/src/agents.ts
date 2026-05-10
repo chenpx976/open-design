@@ -1,8 +1,7 @@
 // @ts-nocheck
 // Node-hosted agent catalog.
 //
-// Open Design used to discover and spawn a zoo of local coding-agent CLIs.
-// The daemon now owns one embedded coding agent runtime, powered by Pi's SDK.
+// The daemon owns one embedded coding agent runtime, powered by Pi's SDK.
 // That matches Flue's "headless programmable harness" shape while keeping OD's
 // local-first daemon responsible for project files, tools, SSE, and config.
 

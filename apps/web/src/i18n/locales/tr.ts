@@ -86,7 +86,7 @@ export const tr: Dict = {
   'settings.testUnknown': 'Test başarısız: {detail}',
   'settings.agentInstall.install': 'Yükle',
   'settings.agentInstall.docs': 'Dokümanlar',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': 'Tercih ettiğin ajan için Yükle veya Dokümanlar bağlantısını aç.',
   'settings.agentInstall.stepAuth':
     'Open Design\'a dönmeden önce sağlayıcı CLI\'sinde kimlik doğrulaması yap (oturum aç veya API kimlik bilgileri ekle).',
@@ -137,8 +137,6 @@ export const tr: Dict = {
   'settings.mediaProviders': 'Medya sağlayıcıları',
   'settings.mediaProvidersHint':
     'Görsel, video ve ses oluşumu için API anahtarları. Yerel saklanır ve yerel arka plan servisiyle senkronize edilir.',
-  'settings.mcpServerTitle': 'MCP sunucusu',
-  'settings.mcpServerHint': 'Open Design\'ı kodlama ajanınız için MCP sunucusu olarak yayınlayın.',
   'settings.mediaProviderApiKey': 'API anahtarı',
   'settings.mediaProviderBaseUrl': 'Temel URL',
   'settings.mediaProviderConfigured': 'Ayarlandı',

@@ -85,7 +85,7 @@ export const th: Dict = {
   'settings.testUnknown': 'การทดสอบล้มเหลว: {detail}',
   'settings.agentInstall.install': 'ติดตั้ง',
   'settings.agentInstall.docs': 'เอกสาร',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': 'เปิดลิงก์ติดตั้งหรือเอกสารสำหรับเอเจนต์ที่ต้องการ',
   'settings.agentInstall.stepAuth':
     'ยืนยันตัวตนกับ CLI ของผู้ให้บริการ (ลงชื่อเข้าใช้หรือเพิ่มข้อมูลรับรอง API) ก่อนกลับไปที่ Open Design',
@@ -131,8 +131,6 @@ export const th: Dict = {
   'settings.modelCustomPlaceholder': 'เช่น anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'ผู้ให้บริการสื่อ',
   'settings.mediaProvidersHint': 'API keys สำหรับการสร้างภาพ วิดีโอ และเสียง บันทึกในเครื่องและซิงค์กับ local daemon',
-  'settings.mcpServerTitle': 'เซิร์ฟเวอร์ MCP',
-  'settings.mcpServerHint': 'เปิดให้ Open Design เป็นเซิร์ฟเวอร์ MCP สำหรับเอเจนต์โค้ด',
   'settings.mediaProviderApiKey': 'API key',
   'settings.mediaProviderBaseUrl': 'Base URL',
   'settings.mediaProviderConfigured': 'ตั้งค่าแล้ว',

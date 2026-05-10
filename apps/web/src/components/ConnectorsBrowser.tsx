@@ -383,8 +383,8 @@ interface ConnectorsBrowserProps {
  */
 /**
  * Provider tab definition. Today this is just Composio, but the surface is
- * structured as a list-of-tabs because the next provider integration (e.g.
- * a self-hosted MCP registry) is expected to drop in here without rework.
+ * structured as a list-of-tabs so the next connector catalog can drop in
+ * here without rework.
  *
  * `match` decides whether a given catalog entry belongs to this provider:
  * the entry's `auth.provider` is the source of truth, falling back to the

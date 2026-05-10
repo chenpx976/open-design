@@ -86,7 +86,7 @@ export const ptBR: Dict = {
   'settings.testUnknown': 'Falha no teste: {detail}',
   'settings.agentInstall.install': 'Instalar',
   'settings.agentInstall.docs': 'Docs',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': 'Abra Instalar ou Docs para o agente desejado.',
   'settings.agentInstall.stepAuth':
     'Autentique-se na CLI do fornecedor (faça login ou adicione credenciais de API) antes de voltar ao Open Design.',
@@ -136,8 +136,6 @@ export const ptBR: Dict = {
   'settings.modelCustomPlaceholder': 'ex.: anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'Provedores de mídia',
   'settings.mediaProvidersHint': 'Chaves de API para geração de imagem, vídeo e áudio. Salvas localmente e sincronizadas com o daemon local.',
-  'settings.mcpServerTitle': 'Servidor MCP',
-  'settings.mcpServerHint': 'Exponha o Open Design como servidor MCP para o seu agente de código.',
   'settings.mediaProviderApiKey': 'API key',
   'settings.mediaProviderBaseUrl': 'Base URL',
   'settings.mediaProviderConfigured': 'Configurado',

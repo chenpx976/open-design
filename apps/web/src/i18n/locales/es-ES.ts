@@ -86,7 +86,7 @@ export const esES: Dict = {
   'settings.testUnknown': 'Prueba fallida: {detail}',
   'settings.agentInstall.install': 'Instalar',
   'settings.agentInstall.docs': 'Docs',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': 'Abre Instalar o Docs para el agente que prefieras.',
   'settings.agentInstall.stepAuth':
     'Autentícate con la CLI del proveedor (inicia sesión o añade credenciales API) antes de volver a Open Design.',
@@ -137,8 +137,6 @@ export const esES: Dict = {
   'settings.mediaProviders': 'Proveedores de medios',
   'settings.mediaProvidersHint':
     'Claves de API para generación de imagen, vídeo y audio. Se guardan localmente y se sincronizan con el daemon local.',
-  'settings.mcpServerTitle': 'Servidor MCP',
-  'settings.mcpServerHint': 'Expón Open Design como servidor MCP para tu agente de código.',
   'settings.mediaProviderApiKey': 'Clave de API',
   'settings.mediaProviderBaseUrl': 'URL base',
   'settings.mediaProviderConfigured': 'Configurado',

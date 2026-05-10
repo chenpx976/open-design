@@ -2,7 +2,7 @@
 
 **Parent:** [`spec.md`](spec.md) · **Siblings:** [`architecture.md`](architecture.md) · [`skills-protocol.md`](skills-protocol.md) · [`modes.md`)
 
-Open Design no longer discovers or spawns local coding-agent CLIs. The daemon owns one Node.js-hosted coding agent runtime: Pi embedded through `@earendil-works/pi-coding-agent`.
+Open Design no longer discovers separate local agent binaries. The daemon owns one Node.js-hosted coding agent runtime: Pi embedded through `@earendil-works/pi-coding-agent`.
 
 ## Rationale
 

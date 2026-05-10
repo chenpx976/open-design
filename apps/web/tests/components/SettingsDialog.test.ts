@@ -689,7 +689,6 @@ describe('shouldEnableSettingsSave', () => {
     expect(shouldEnableSettingsSave(incompleteApiCfg, 'appearance', [availableAgent], true)).toBe(true);
     expect(shouldEnableSettingsSave(incompleteApiCfg, 'composio', [availableAgent], true)).toBe(true);
     expect(shouldEnableSettingsSave(incompleteApiCfg, 'media', [availableAgent], true)).toBe(true);
-    expect(shouldEnableSettingsSave(incompleteApiCfg, 'integrations', [availableAgent], true)).toBe(true);
     expect(shouldEnableSettingsSave(incompleteApiCfg, 'notifications', [availableAgent], true)).toBe(true);
     expect(shouldEnableSettingsSave(incompleteApiCfg, 'pet', [availableAgent], true)).toBe(true);
     expect(shouldEnableSettingsSave(incompleteApiCfg, 'library', [availableAgent], true)).toBe(true);
@@ -831,7 +830,6 @@ describe('sanitizeSettingsSavePayload', () => {
     const sections: Array<Parameters<typeof sanitizeSettingsSavePayload>[2]> = [
       'media',
       'composio',
-      'integrations',
       'language',
       'appearance',
       'notifications',

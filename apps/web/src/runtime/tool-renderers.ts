@@ -4,7 +4,7 @@
  *
  * Built-in tools (Read/Write/Edit/Bash/...) keep their hand-tuned cards in
  * `ToolCard.tsx`. The registry is the extension point for everything else:
- * skill-emitted tools, MCP-style external tools, future plugins. Anything
+ * skill-emitted tools, connector-backed tools, future plugins. Anything
  * registered here is consulted *before* the hardcoded family ladder, so a
  * third party can override a built-in if they really want to.
  *

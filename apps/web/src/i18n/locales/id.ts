@@ -86,7 +86,7 @@ export const id: Dict = {
   'settings.testUnknown': 'Tes gagal: {detail}',
   'settings.agentInstall.install': 'Instal',
   'settings.agentInstall.docs': 'Dokumentasi',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': 'Buka Instal atau Dokumentasi untuk agen pilihan Anda.',
   'settings.agentInstall.stepAuth':
     'Lakukan autentikasi di CLI vendor (masuk atau tambahkan kredensial API) sebelum kembali ke Open Design.',
@@ -137,8 +137,6 @@ export const id: Dict = {
   'settings.modelCustomPlaceholder': 'mis. anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'Provider media',
   'settings.mediaProvidersHint': 'API key untuk generasi gambar, video, dan audio. Disimpan lokal dan disinkronkan ke daemon lokal.',
-  'settings.mcpServerTitle': 'Server MCP',
-  'settings.mcpServerHint': 'Ekspos Open Design sebagai server MCP untuk agen koding Anda.',
   'settings.mediaProviderApiKey': 'API key',
   'settings.mediaProviderBaseUrl': 'Base URL',
   'settings.mediaProviderConfigured': 'Sudah diatur',

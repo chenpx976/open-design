@@ -1,6 +1,6 @@
 # Open Design
 
-> **The open-source alternative to [Claude Design][cd].** Local-first, deployable, BYOK at every layer — a Node.js daemon hosts the **Pi SDK coding agent** directly, driven by **31 composable Skills** and **72 brand-grade Design Systems**. No local coding-agent CLI or PATH setup required; production can split API and Pi workers with Redis + Postgres.
+> **The open-source alternative to [Claude Design][cd].** Local-first, deployable, BYOK at every layer — a Node.js daemon hosts the **Pi SDK coding agent** directly, driven by **31 composable Skills** and **72 brand-grade Design Systems**. No separate local agent binary or PATH setup required; production can split API and Pi workers with Redis + Postgres.
 
 <p align="center">
   <img src="docs/assets/banner.png" alt="Open Design — editorial cover: design with the agent on your laptop" width="100%" />
@@ -53,7 +53,7 @@ OD stands on four open-source shoulders:
 
 | | What you get |
 |---|---|
-| **Coding agent** | Embedded Pi SDK hosted by the Node.js daemon — no local coding-agent CLI discovery, no GUI-inherited PATH surprises, same event stream for text, thinking, tool calls, and tool results |
+| **Coding agent** | Embedded Pi SDK hosted by the Node.js daemon — no separate agent binary discovery, no GUI-inherited PATH surprises, same event stream for text, thinking, tool calls, and tool results |
 | **BYOK fallback** | Protocol-specific API proxy at `/api/proxy/{anthropic,openai,azure,google}/stream` — paste `baseUrl` + `apiKey` + `model`, choose Anthropic / OpenAI / Azure OpenAI / Google Gemini, and the daemon normalizes SSE back to the same chat stream. Internal-IP/SSRF blocked at the daemon edge. |
 | **Design systems built-in** | **129** — 2 hand-authored starters + 70 product systems (Linear, Stripe, Vercel, Airbnb, Tesla, Notion, Anthropic, Apple, Cursor, Supabase, Figma, Xiaohongshu, …) from [`awesome-design-md`][acd2], plus 57 design skills from [`awesome-design-skills`][ads] added directly under `design-systems/` |
 | **Skills built-in** | **31** — 27 in `prototype` mode (web-prototype, saas-landing, dashboard, mobile-app, gamified-app, social-carousel, magazine-poster, dating-web, sprite-animation, motion-frames, critique, tweaks, wireframe-sketch, pm-spec, eng-runbook, finance-report, hr-onboarding, invoice, kanban-board, team-okrs, …) + 4 in `deck` mode (`guizang-ppt` · `simple-deck` · `replit-deck` · `weekly-update`). Grouped in the picker by `scenario`: design / marketing / operation / engineering / product / finance / hr / sale / personal. |
@@ -221,7 +221,7 @@ Adding a skill takes one folder. Read [`docs/skills-protocol.md`](docs/skills-pr
 
 ### 1 · Pi is hosted by the daemon.
 
-Open Design no longer asks the user's machine to provide a coding-agent CLI. The daemon embeds Pi through `@earendil-works/pi-coding-agent`, owns model selection, streams Pi thinking/tool events into the UI, and keeps file access behind `ProjectFs`. For cluster deployments the same `AgentRuntime` boundary can enqueue jobs to workers while keeping the browser contract unchanged. BYOK API mode remains available for provider-proxy flows.
+Open Design no longer asks the user's machine to provide a separate agent binary. The daemon embeds Pi through `@earendil-works/pi-coding-agent`, owns model selection, streams Pi thinking/tool events into the UI, and keeps file access behind `ProjectFs`. For cluster deployments the same `AgentRuntime` boundary can enqueue jobs to workers while keeping the browser contract unchanged. BYOK API mode remains available for provider-proxy flows.
 
 ### 2 · Skills are files, not plugins.
 
@@ -621,18 +621,6 @@ For developers, a Nix dev shell is available and can be used with `direnv` too:
 nix develop   # dev shell with required dependencies to work on Open Design
 ```
 
-
-## Use Open Design from your coding agent
-
-Open Design ships a stdio MCP server. Wire it into Claude Code, Codex, Cursor, VS Code, Antigravity, Zed, Windsurf, or any MCP-compatible client and the agent in another repo can read files from your local Open Design projects directly. Replaces the export-then-attach loop. When the agent calls `search_files`, `get_file`, or `get_artifact` without a project argument, the MCP defaults to whatever project (and file) you have open in Open Design right now, so prompts like *"build this in my app"* or *"match these styles"* just work.
-
-**Why MCP?** Exporting and re-attaching a zip every design iteration breaks flow. The MCP server exposes your design source directly -- tokens CSS, JSX components, entry HTML -- as a structured API the agent can query by name. The agent always sees the live file, not a stale copy from the last export.
-
-Open **Settings → MCP server** in the Open Design app for a per-client install flow. The panel bakes the absolute path to your `node` binary and the daemon's built `cli.js` into every snippet, so it works on a fresh source clone where `od` is not on your PATH. Cursor gets a one-click deeplink; the rest get a copy-paste JSON snippet in the schema their config file expects (Claude Code includes a `claude mcp add-json` one-liner so you do not have to hand-edit `~/.claude.json`). Restart or reload your client after install for the server to show up.
-
-The daemon must be running locally for MCP tool calls to succeed. If the agent was started before Open Design, restart the agent after Open Design is up so it can reach the live daemon. Tool calls made while the daemon is offline return a clear `"daemon not reachable"` error rather than a crash.
-
-**Security model.** The MCP server is read-only; it exposes file reads, file metadata, and search -- nothing that writes to disk or calls an external service. It runs as a child process of the coding agent over stdio, so any MCP client you register inherits read access to your local Open Design projects. Treat it like installing a VS Code extension: only register clients you trust. The daemon binds to `127.0.0.1` by default; LAN-wide exposure requires an explicit `OD_BIND_HOST` opt-in. If you also front the SPA with a non-loopback static server, set `OD_ALLOWED_ORIGINS=<origin1>,<origin2>,...` (comma-separated `scheme://host[:port]` entries) so the daemon's same-origin gate accepts API writes from those origins on both the `Origin` and `Host` checks; without it the browser will see 403s on every PUT/POST (Caddy v2 reverse_proxy preserves the original Host header upstream by default, so loopback alone is not enough). Connector-credential and live-artifact preview routes stay loopback-only regardless.
 
 ## Repository structure
 

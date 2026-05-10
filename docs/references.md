@@ -55,7 +55,7 @@ Every external project this spec leans on. Three questions per entry: what is it
 - **Repo:** [github.com/farion1231/cc-switch][ccsw]
 
 [ccsw]: https://github.com/farion1231/cc-switch
-- **What it is:** Tauri desktop app for managing five CLI tools (Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw). Provider management, MCP server config, skills install, session browsing. SQLite at `~/.cc-switch/cc-switch.db`. **Skills dir at `~/.cc-switch/skills/` with symlinks into each agent's config dir.** 50+ provider presets.
+- **What it is:** Tauri desktop app for managing five CLI tools (Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw). Provider management, skills install, session browsing, and local agent configuration. SQLite at `~/.cc-switch/cc-switch.db`. **Skills dir at `~/.cc-switch/skills/` with symlinks into each agent's config dir.** 50+ provider presets.
 - **Why it matters:** Useful historical context for daemon/runtime topology and local-first agent UX. The current OD runtime explicitly does not adopt PATH scan or config probe behavior.
 - **What we borrow:**
   - **Symlink-based skill distribution** as historical inspiration for portable skill bundles.

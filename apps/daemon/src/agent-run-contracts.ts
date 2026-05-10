@@ -29,6 +29,8 @@ export interface AgentRunPersistence {
   listRunEventsAfter(runId: string, afterEventId?: number): PersistedAgentRunEvent[] | Promise<PersistedAgentRunEvent[]>;
   getRun(runId: string): PersistedAgentRun | null | Promise<PersistedAgentRun | null>;
   updateRunStatus(runId: string, status: AgentRunStatus, exitCode?: number | null, signal?: string | null): void | Promise<void>;
+  getRunStats?(): AgentRunStats | Promise<AgentRunStats>;
+  close?(): void | Promise<void>;
 }
 
 export interface AgentJob {
@@ -54,4 +56,20 @@ export interface AgentJobQueue {
   heartbeatJob?(jobId: string, workerId: string): void | Promise<void>;
   completeJob(jobId: string): void | Promise<void>;
   failJob(jobId: string, error: unknown, options?: AgentJobFailOptions): void | Promise<void>;
+  getStats?(): AgentJobQueueStats | Promise<AgentJobQueueStats>;
+  close?(): void | Promise<void>;
+}
+
+export interface AgentRunStats {
+  runsByStatus: Partial<Record<AgentRunStatus, number>>;
+  recentFailures: number;
+}
+
+export interface AgentJobQueueStats {
+  queued: number;
+  running: number;
+  failed: number;
+  succeeded: number;
+  retryable: number;
+  oldestQueuedAgeMs: number | null;
 }

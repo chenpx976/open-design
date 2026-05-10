@@ -87,7 +87,7 @@ export const uk: Dict = {
   'settings.testUnknown': 'Тест не виконано: {detail}',
   'settings.agentInstall.install': 'Встановити',
   'settings.agentInstall.docs': 'Документація',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': 'Відкрийте Встановити або Документація для потрібного агента.',
   'settings.agentInstall.stepAuth':
     'Пройдіть автентифікацію у CLI постачальника (увійдіть або додайте API-облікові дані), потім поверніться до Open Design.',
@@ -138,8 +138,6 @@ export const uk: Dict = {
   'settings.mediaProviders': 'Медіа-провайдери',
   'settings.mediaProvidersHint':
     'API-ключі для генерації зображень, відео та аудіо. Зберігаються локально та синхронізуються з локальним фоновим процесом.',
-  'settings.mcpServerTitle': 'MCP-сервер',
-  'settings.mcpServerHint': 'Відкрийте Open Design як MCP-сервер для вашого кодинг-агента.',
   'settings.mediaProviderApiKey': 'API-ключ',
   'settings.mediaProviderBaseUrl': 'Базовий URL',
   'settings.mediaProviderConfigured': 'Налаштовано',

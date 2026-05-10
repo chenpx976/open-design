@@ -86,7 +86,7 @@ export const ru: Dict = {
   'settings.testUnknown': 'Тест не пройден: {detail}',
   'settings.agentInstall.install': 'Установить',
   'settings.agentInstall.docs': 'Документация',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': 'Откройте Установить или Документация для нужного агента.',
   'settings.agentInstall.stepAuth':
     'Пройдите аутентификацию в CLI поставщика (вход или добавление API-ключей), затем вернитесь в Open Design.',
@@ -136,8 +136,6 @@ export const ru: Dict = {
   'settings.modelCustomPlaceholder': 'например, anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'Медиа-провайдеры',
   'settings.mediaProvidersHint': 'API-ключи для генерации изображений, видео и аудио. Хранятся локально и синхронизируются с локальным демоном.',
-  'settings.mcpServerTitle': 'MCP-сервер',
-  'settings.mcpServerHint': 'Откройте Open Design как MCP-сервер для вашего кодинг-агента.',
   'settings.mediaProviderApiKey': 'API-ключ',
   'settings.mediaProviderBaseUrl': 'Базовый URL',
   'settings.mediaProviderConfigured': 'Настроено',

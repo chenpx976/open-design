@@ -177,11 +177,9 @@ export function App() {
     });
   }, [config.theme, config.accentColor]);
 
-  // Tell the daemon what the user is currently looking at, so the MCP
-  // server can surface it as `get_active_context` to a coding agent in
-  // another repo. Best-effort fire-and-forget; the daemon holds it in
-  // memory with a short TTL and the MCP layer falls back to
-  // {active:false} if this hasn't run.
+  // Tell the daemon what the user is currently looking at. Best-effort
+  // fire-and-forget; the daemon holds it in memory with a short TTL so
+  // local features can resolve the active project without extra prompts.
   const activeProjectId = route.kind === 'project' ? route.projectId : null;
   const activeFileName = route.kind === 'project' ? route.fileName : null;
   const showPrivacyConsent =

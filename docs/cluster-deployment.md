@@ -115,15 +115,21 @@ Operational checks:
 
 ```bash
 docker compose --profile worker logs -f agent-worker
+docker compose --profile worker exec agent-worker node apps/daemon/dist/cli.js agent-worker --healthcheck
+curl http://127.0.0.1:${OPEN_DESIGN_PORT:-7456}/api/agent-runtime/status
 docker compose --profile worker exec redis redis-cli llen open-design:agent-jobs:queued
 docker compose --profile worker exec redis redis-cli zcard open-design:agent-jobs:running
-docker compose --profile worker exec postgres psql -U open_design -d open_design -c "select run_id,event,payload_json from agent_run_events order by id desc limit 20;"
+docker compose --profile worker exec postgres psql -U open_design -d open_design -c "select run_id,event,data_json from agent_run_events order by timestamp desc limit 20;"
 ```
 
 Expected semantics:
 
 - `queued` depth falls back to `0` after the worker claims a job.
 - `running` falls back to `0` after the worker acknowledges success/failure.
+- `od agent-worker --healthcheck` checks backend connectivity and schema/queue
+  availability without claiming a job.
+- `/api/agent-runtime/status` exposes aggregate run and queue counts only; it
+  does not include prompts, secrets, file contents, or project paths.
 - Successful runs have `start`, one or more `agent`, and `end` events in
   Postgres, with the Redis job hash ending at `status=succeeded`.
 - Failed runs keep the error in the job hash until cleanup and write a terminal
@@ -144,6 +150,6 @@ OD_AGENT_REDIS_URL=redis://127.0.0.1:6379/0 \
 pnpm tools-dev run web --daemon-port 17456 --web-port 17573
 ```
 
-The Postgres adapter creates `agent_runs` and `agent_run_events` if they do not
+The Postgres run store creates `agent_runs` and `agent_run_events` if they do not
 exist. It deliberately does not store project files; `ProjectFs` still owns
 artifact storage.

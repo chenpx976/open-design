@@ -86,7 +86,7 @@ export const hu: Dict = {
   'settings.testUnknown': 'Sikertelen teszt: {detail}',
   'settings.agentInstall.install': 'Telepítés',
   'settings.agentInstall.docs': 'Dokumentáció',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': 'Nyisd meg a Telepítés vagy Dokumentáció hivatkozást a kívánt ügynöknél.',
   'settings.agentInstall.stepAuth':
     'Hitelesíts a szolgáltató CLI-jében (bejelentkezés vagy API hitelesítő adatok megadása), mielőtt visszatérsz az Open Designhoz.',
@@ -137,8 +137,6 @@ export const hu: Dict = {
   'settings.mediaProviders': 'Média-szolgáltatók',
   'settings.mediaProvidersHint':
     'API-kulcsok kép-, videó- és hanggeneráláshoz. Helyben tárolva, és a helyi daemonnal szinkronizálva.',
-  'settings.mcpServerTitle': 'MCP-szerver',
-  'settings.mcpServerHint': 'Tedd elérhetővé az Open Designt MCP-szerverként a kódügynököd számára.',
   'settings.mediaProviderApiKey': 'API-kulcs',
   'settings.mediaProviderBaseUrl': 'Bázis URL',
   'settings.mediaProviderConfigured': 'Beállítva',

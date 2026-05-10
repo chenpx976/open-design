@@ -86,7 +86,7 @@ export const ja: Dict = {
   'settings.testUnknown': 'テストに失敗しました: {detail}',
   'settings.agentInstall.install': 'インストール',
   'settings.agentInstall.docs': 'ドキュメント',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
   'settings.agentInstall.stepOpenLinks': '利用したいエージェントの「インストール」または「ドキュメント」を開きます。',
   'settings.agentInstall.stepAuth':
     'Open Design に戻る前に、ベンダー CLI で認証（サインインまたは API 資格情報の追加）を行います。',
@@ -137,8 +137,6 @@ export const ja: Dict = {
   'settings.mediaProviders': 'メディアプロバイダー',
   'settings.mediaProvidersHint':
     '画像・動画・音声生成のための API キー。ローカルに保存され、ローカルデーモンに同期されます。',
-  'settings.mcpServerTitle': 'MCP サーバー',
-  'settings.mcpServerHint': 'Open Design を MCP サーバーとしてコーディングエージェントに公開します。',
   'settings.mediaProviderApiKey': 'APIキー',
   'settings.mediaProviderBaseUrl': 'ベース URL',
   'settings.mediaProviderConfigured': '設定済み',

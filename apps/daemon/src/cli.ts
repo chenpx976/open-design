@@ -3,12 +3,11 @@
 import { startServer } from './server.js';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { runLiveArtifactsMcpServer } from './mcp-live-artifacts-server.js';
 import { runConnectorsToolCli } from './tools-connectors-cli.js';
 import { runLiveArtifactsToolCli } from './tools-live-artifacts-cli.js';
 import { splitResearchSubcommand } from './research/cli-args.js';
 import { openBrowser } from './browser-open.js';
-import { runAgentWorker } from './agent-worker.js';
+import { checkAgentWorkerHealth, runAgentWorker } from './agent-worker.js';
 
 const argv = process.argv.slice(2);
 
@@ -65,14 +64,6 @@ const MEDIA_GENERATE_BOOLEAN_FLAGS = new Set([
   'h',
 ]);
 
-const MCP_STRING_FLAGS = new Set([
-  'daemon-url',
-]);
-const MCP_BOOLEAN_FLAGS = new Set([
-  'help',
-  'h',
-]);
-
 const RESEARCH_SEARCH_STRING_FLAGS = new Set([
   'query',
   'max-sources',
@@ -85,21 +76,9 @@ const RESEARCH_SEARCH_BOOLEAN_FLAGS = new Set([
 
 const SUBCOMMAND_MAP = {
   media: runMedia,
-  mcp: runMcp,
   research: runResearch,
   'agent-worker': runWorker,
 };
-
-if (argv[0] === 'mcp' && argv[1] === 'live-artifacts') {
-  try {
-    const { exitCode } = await runLiveArtifactsMcpServer();
-    process.exit(exitCode);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`${JSON.stringify({ ok: false, error: { message } })}\n`);
-    process.exit(1);
-  }
-}
 
 const first = argv.find((a) => !a.startsWith('-'));
 if (first && SUBCOMMAND_MAP[first]) {
@@ -204,13 +183,10 @@ function printRootHelp() {
   od tools connectors <list|execute> [options]
       Discover and execute configured connectors.
 
-  od mcp live-artifacts
-      Start the MCP server exposing live-artifact and connector tools.
-
   od research search --query <text> [--max-sources 5] [--daemon-url <url>]
       Run agent-callable Tavily research through the local daemon.
 
-  od agent-worker [--idle-exit-ms <n>]
+  od agent-worker [--idle-exit-ms <n>] [--healthcheck]
       Consume queued Pi agent jobs from the daemon data store.
 
   "$OD_NODE_BIN" "$OD_BIN" tools ...
@@ -219,14 +195,7 @@ function printRootHelp() {
   od media generate --surface <image|video|audio> --model <id> [opts]
       Generate a media artifact and write it into the active project.
       Designed to be invoked by a code agent - picks up OD_DAEMON_URL
-      and OD_PROJECT_ID from the env that the daemon injected on spawn.
-
-  od mcp [--daemon-url <url>]
-      Run a stdio MCP server that proxies read-only tool calls to a
-      running Open Design daemon. Wire it into a coding agent
-      (Claude Code, Cursor, VS Code, Zed, Windsurf) in another repo
-      to pull files from a local Open Design project without
-      exporting a zip.
+      and OD_PROJECT_ID from the env for the active Open Design project.
 
 Options:
   --port <n>       Port to listen on (default: 7456, env: OD_PORT).
@@ -245,14 +214,24 @@ What the daemon does:
 
 async function runWorker(args) {
   let idleExitMs = Number(process.env.OD_AGENT_WORKER_IDLE_EXIT_MS) || 0;
+  let healthcheck = false;
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === '--idle-exit-ms') {
       idleExitMs = Number(args[++i]) || 0;
+    } else if (a === '--healthcheck') {
+      healthcheck = true;
     } else if (a === '-h' || a === '--help') {
-      console.log('Usage: od agent-worker [--idle-exit-ms <n>]');
+      console.log('Usage: od agent-worker [--idle-exit-ms <n>] [--healthcheck]');
       return;
     }
+  }
+  if (healthcheck) {
+    const result = await checkAgentWorkerHealth({
+      projectRoot: resolveProjectRoot(__dirname),
+    });
+    console.log(JSON.stringify(result));
+    return;
   }
   const result = await runAgentWorker({
     idleExitMs,
@@ -662,74 +641,4 @@ Output: a single line of JSON: {"file": { name, size, kind, mime, ... }}.
 Skills should call this and then reference the returned filename in their
 artifact / message body. The daemon writes the bytes into the project's
 files folder so the FileViewer can preview them immediately.`);
-}
-
-// ---------------------------------------------------------------------------
-// Subcommand: od mcp
-// ---------------------------------------------------------------------------
-
-async function runMcp(args) {
-  let flags;
-  try {
-    flags = parseFlags(args, {
-      string: MCP_STRING_FLAGS,
-      boolean: MCP_BOOLEAN_FLAGS,
-    });
-  } catch (err) {
-    console.error(err.message);
-    printMcpHelp();
-    process.exit(2);
-  }
-  if (flags.help || flags.h) {
-    printMcpHelp();
-    return;
-  }
-
-  const { resolveMcpDaemonUrl } = await import('./mcp-daemon-url.js');
-  const daemonUrl = await resolveMcpDaemonUrl({ flagUrl: flags['daemon-url'] });
-
-  const { runMcpStdio } = await import('./mcp.js');
-  await runMcpStdio({ daemonUrl });
-}
-
-function printMcpHelp() {
-  console.log(`Usage: od mcp [--daemon-url <url>]
-
-Run a stdio MCP (Model Context Protocol) server that proxies read-only
-tool calls to a running Open Design daemon. Wire it into a coding agent
-in another repo so the agent can pull files from a local Open Design
-project without exporting a zip every iteration.
-
-Options:
-  --daemon-url <url>   Open Design daemon HTTP base URL. Resolution
-                       order: this flag, OD_DAEMON_URL, the running
-                       daemon's sidecar IPC status socket
-                       (/tmp/open-design/ipc/<namespace>/daemon.sock),
-                       then http://127.0.0.1:7456. Each new MCP spawn
-                       discovers the live daemon URL at startup, so
-                       MCP client configs stay valid across daemon
-                       restarts even when the port is ephemeral. A
-                       running MCP server caches the URL; restart the
-                       MCP client after a daemon restart to pick up a
-                       new port.
-
-Tools exposed:
-  list_projects                  list every Open Design project
-  get_active_context             what project/file the user has open right now
-  get_artifact([project, entry]) bundle: entry file + every referenced sibling
-  get_project([project])         single project metadata
-  get_file([project, path])      file contents (textual mimes only for now)
-  search_files(query[, project]) literal substring search across textual files
-  list_files([project])          project files + artifactManifest sidecars
-
-When project is omitted, get_artifact / get_project / get_file /
-search_files / list_files default to the project the user has open in
-Open Design; get_artifact and get_file additionally default to the
-active file. The response stamps usedActiveContext so callers can see
-which project/file got resolved.
-
-For the copy-paste, per-client snippet (with absolute paths resolved
-for your machine, plus a one-click deeplink for Cursor), open Settings
-→ MCP server in the Open Design app. Read-only by design; the daemon
-must be running locally for tool calls to succeed.`);
 }

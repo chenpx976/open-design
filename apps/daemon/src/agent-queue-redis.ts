@@ -45,6 +45,17 @@ function parseJob(id, record) {
   };
 }
 
+async function scanJobKeys(redis, pattern) {
+  const keys = [];
+  let cursor = '0';
+  do {
+    const result = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+    cursor = result[0];
+    keys.push(...result[1]);
+  } while (cursor !== '0');
+  return keys;
+}
+
 export async function createRedisAgentJobQueue({
   env = process.env,
   namespace = env.OD_AGENT_QUEUE_NAMESPACE || env.OD_NAMESPACE || 'open-design',
@@ -198,6 +209,37 @@ export async function createRedisAgentJobQueue({
           updatedAt: String(now),
         })
         .exec();
+    },
+    async getStats() {
+      const [queued, running] = await Promise.all([
+        redis.llen(k.queued),
+        redis.zcard(k.running),
+      ]);
+      const firstQueuedId = await redis.lindex(k.queued, 0);
+      let oldestQueuedAgeMs = null;
+      if (firstQueuedId) {
+        const createdAt = Number(await redis.hget(k.job(firstQueuedId), 'createdAt'));
+        if (createdAt > 0) oldestQueuedAgeMs = Math.max(0, Date.now() - createdAt);
+      }
+      let failed = 0;
+      let succeeded = 0;
+      let retryable = 0;
+      const jobKeys = await scanJobKeys(redis, k.job('*'));
+      if (jobKeys.length > 0) {
+        const rows = await redis.pipeline(jobKeys.map((key) => ['hmget', key, 'status', 'attempts'])).exec();
+        for (const row of rows) {
+          const [err, values] = row;
+          if (err || !Array.isArray(values)) continue;
+          const [status, attemptsRaw] = values;
+          if (status === 'failed') failed += 1;
+          if (status === 'succeeded') succeeded += 1;
+          if (status === 'queued' && Number(attemptsRaw) > 0) retryable += 1;
+        }
+      }
+      return { queued, running, failed, succeeded, retryable, oldestQueuedAgeMs };
+    },
+    async close() {
+      await redis.quit();
     },
   };
 }

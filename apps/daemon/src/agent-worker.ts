@@ -44,6 +44,30 @@ export async function runAgentWorker({
   return { workerId, stopped: true };
 }
 
+export async function checkAgentWorkerHealth({
+  projectRoot = process.cwd(),
+  dataDir = process.env.OD_DATA_DIR,
+} = {}) {
+  const db = openDatabase(projectRoot, { dataDir });
+  const { runStore, jobQueue } = await createAgentRunBackendsFromEnv(process.env, { db });
+  try {
+    const [runs, queue] = await Promise.all([
+      runStore.getRunStats ? runStore.getRunStats() : Promise.resolve(null),
+      jobQueue.getStats ? jobQueue.getStats() : Promise.resolve(null),
+    ]);
+    return {
+      ok: true,
+      runs,
+      queue,
+    };
+  } finally {
+    await Promise.allSettled([
+      runStore.close?.(),
+      jobQueue.close?.(),
+    ]);
+  }
+}
+
 async function runJob({ job, runStore, jobQueue, runtime, workerId, heartbeatMs, maxJobMs, maxAttempts }) {
   const payload = job.payload || {};
   const runId = job.runId;

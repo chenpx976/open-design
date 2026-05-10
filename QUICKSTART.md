@@ -9,7 +9,7 @@ Run the full product locally.
 - **Node.js:** `~24` (Node 24.x). The repo enforces this through `package.json#engines`.
 - **pnpm:** `10.33.x`. The repo pins `pnpm@10.33.2` through `packageManager`; use Corepack so the pinned version is selected automatically.
 - **OS:** macOS, Linux, and WSL2 are the primary paths. Windows native should work for most flows, but WSL2 is the safer baseline.
-- **Agent runtime:** Open Design embeds Pi through the Node.js daemon. No local coding-agent CLI or PATH setup is required.
+- **Agent runtime:** Open Design embeds Pi through the Node.js daemon. No separate local agent binary or PATH setup is required.
 
 ### Pi SDK runtime
 
@@ -227,7 +227,7 @@ ls -la apps/daemon/dist/cli.js
 curl -s http://127.0.0.1:7457/api/health
 ```
 
-Then open the project from the Open Design app again instead of resuming an old terminal agent session. A daemon-spawned agent should see values like:
+Then open the project from the Open Design app again instead of resuming an old terminal session. The Pi runtime should see values like:
 
 ```bash
 echo "OD_BIN=$OD_BIN"
@@ -348,7 +348,7 @@ open-design/
 
 - **`better-sqlite3` fails to load / ABI mismatch after a Node.js version change** — `pnpm install` re-runs `postinstall` automatically and rebuilds the native addon for the current Node.js. To rebuild manually or verify the fix: `pnpm --filter @open-design/daemon rebuild better-sqlite3` then `pnpm --filter @open-design/daemon exec node -e "require('better-sqlite3')"`. Requires build tools: `python3`, `make`, `g++` (or `clang++`). If you have `ignore-scripts=true` in your `.npmrc`, run `node scripts/postinstall.mjs` after `pnpm install`.
 - **Pi agent run fails immediately** — check the daemon terminal for the Pi SDK error and verify the selected model/provider credentials in Settings.
-- **media generation says `OD_BIN` is missing or daemon URL is `:0`** — run the media dispatcher checks above. Do not resume the old CLI session; reopen the project from the Open Design app so the daemon can inject fresh `OD_*` variables.
+- **media generation says `OD_BIN` is missing or daemon URL is `:0`** — run the media dispatcher checks above. Reopen the project from the Open Design app so the daemon can expose fresh `OD_*` variables to the Pi runtime.
 - **artifact never renders** — the model produced text without wrapping in `<artifact>`. Confirm the system prompt is going through (check daemon log) and consider switching to a more capable model or a stricter skill.
 
 ## Mapping back to the vision
