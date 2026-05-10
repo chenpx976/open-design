@@ -443,12 +443,21 @@ describe('streamViaDaemon', () => {
     expect(handlers.onDone).toHaveBeenCalledWith('');
   });
 
-  it('reports an error when reconnects are exhausted before an end event', async () => {
+  it('polls run status and preserves the persisted error after a disconnected stream', async () => {
     const handlers = createDaemonHandlers();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === '/api/runs') return jsonResponse({ runId: 'run-1' });
       if (url === '/api/runs/run-1/events') return sseResponse('');
+      if (url === '/api/runs/run-1') {
+        return jsonResponse({
+          id: 'run-1',
+          status: 'failed',
+          exitCode: 1,
+          signal: 'DAEMON_RESTART',
+          lastError: { message: 'daemon disconnected before completion', retryable: true },
+        });
+      }
       throw new Error(`unexpected fetch ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -462,7 +471,12 @@ describe('streamViaDaemon', () => {
     });
 
     expect(fetchMock).not.toHaveBeenCalledWith('/api/runs/run-1/cancel', { method: 'POST' });
-    expect(handlers.onError).toHaveBeenCalledWith(new Error('daemon stream disconnected before run completed'));
+    expect(handlers.onAgentEvent).toHaveBeenCalledWith({
+      kind: 'status',
+      label: 'reconnecting',
+      detail: 'waiting for daemon stream; retry 1',
+    });
+    expect(handlers.onError).toHaveBeenCalledWith(new Error('daemon disconnected before completion'));
     expect(handlers.onDone).not.toHaveBeenCalled();
   });
 

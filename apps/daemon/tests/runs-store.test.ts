@@ -64,6 +64,59 @@ describe('createChatRunService store hooks', () => {
     expect(run.nextEventId).toBe(3);
   });
 
+  it('recovers stale persisted active inline runs as failed', async () => {
+    const calls: string[] = [];
+    const service = createChatRunService({
+      createSseResponse: () => ({ send: () => {}, end: () => {}, cleanup: () => {} }),
+      createSseErrorPayload: (code: string, message: string, init: Record<string, unknown>) => ({
+        error: { code, message, ...init },
+      }),
+      stalePersistedActiveMs: 1,
+      store: {
+        getRun: (id: string) => ({
+          id,
+          projectId: 'project-a',
+          conversationId: 'conversation-a',
+          assistantMessageId: 'message-a',
+          clientRequestId: 'client-a',
+          agentId: 'pi',
+          status: 'running',
+          createdAt: 1,
+          updatedAt: 1,
+          exitCode: null,
+          signal: null,
+        }),
+        listRunEventsAfter: () => [
+          { id: 1, event: 'agent', data: { type: 'status', label: 'working' }, timestamp: 1 },
+        ],
+        appendEvent: (_run: unknown, record: { event: string }) => calls.push(`event:${record.event}`),
+        updateRun: (run: { status: string; signal: string | null }) =>
+          calls.push(`update:${run.status}:${run.signal}`),
+      },
+    });
+
+    const run = service.get('persisted-running');
+    await service.flush(run);
+
+    expect(service.statusBody(run)).toMatchObject({
+      status: 'failed',
+      exitCode: 1,
+      signal: 'DAEMON_RESTART',
+      lastError: {
+        code: 'AGENT_EXECUTION_FAILED',
+        retryable: true,
+      },
+    });
+    expect(run.events.map((event: { event: string }) => event.event)).toEqual([
+      'agent',
+      'error',
+      'end',
+    ]);
+    expect(calls).toContain('event:error');
+    expect(calls).toContain('event:end');
+    expect(calls).toContain('update:failed:DAEMON_RESTART');
+  });
+
   it('includes the latest persisted error in run status bodies', () => {
     const service = createChatRunService({
       createSseResponse: () => ({ send: () => {}, end: () => {}, cleanup: () => {} }),

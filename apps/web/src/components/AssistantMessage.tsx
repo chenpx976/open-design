@@ -156,6 +156,7 @@ export function AssistantMessage({
           endedAt={message.endedAt}
           usage={usage}
           hasUnfinishedTodos={unfinishedTodos.length > 0}
+          latestStatus={latestStatusLabel(events)}
         />
       </div>
     </div>
@@ -222,6 +223,7 @@ function AssistantFooter({
   endedAt,
   usage,
   hasUnfinishedTodos,
+  latestStatus,
 }: {
   streaming: boolean;
   runStatus: ChatMessage["runStatus"];
@@ -229,9 +231,11 @@ function AssistantFooter({
   endedAt: number | undefined;
   usage: Extract<AgentEvent, { kind: "usage" }> | undefined;
   hasUnfinishedTodos: boolean;
+  latestStatus?: { label: string; detail?: string | undefined };
 }) {
   const t = useT();
   const elapsed = useLiveElapsed(streaming, startedAt, endedAt);
+  const reconnecting = streaming && latestStatus?.label === "reconnecting";
   if (!streaming && !elapsed && !usage && !hasUnfinishedTodos) return null;
   return (
     <div
@@ -240,7 +244,9 @@ function AssistantFooter({
     >
       <span className="dot" data-active={streaming ? "true" : "false"} />
       <span className="assistant-label">
-        {streaming
+        {reconnecting
+          ? reconnectingText()
+          : streaming
           ? t("assistant.workingLabel")
           : runStatus === "failed"
           ? t("designs.status.failed")
@@ -417,7 +423,14 @@ function humanizeStatus(label: string, t: (k: keyof Dict) => string): string {
   if (label === "requesting") return t("assistant.statusRequesting");
   if (label === "thinking") return t("assistant.statusThinking");
   if (label === "streaming") return t("assistant.statusStreaming");
+  if (label === "reconnecting") return reconnectingText();
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function reconnectingText(): string {
+  const language =
+    typeof navigator !== "undefined" ? navigator.language.toLowerCase() : "";
+  return language.startsWith("zh") ? "重连中" : "Reconnecting";
 }
 
 function latestStatusLabel(

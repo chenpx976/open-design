@@ -151,6 +151,20 @@ describe('AssistantMessage unfinished todo state', () => {
     expect(screen.queryByText('working')).toBeNull();
   });
 
+  it('shows reconnecting instead of the normal working footer during stream recovery', () => {
+    render(
+      <AssistantMessage
+        message={messageWithEvents([{ kind: 'status', label: 'reconnecting', detail: 'retry 1' }])}
+        streaming
+        projectId="project-1"
+        isLast
+      />,
+    );
+
+    expect(screen.getAllByText('Reconnecting').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Working')).toBeNull();
+  });
+
   it('uses the latest cumulative tool result for a repeated tool id', () => {
     render(
       <AssistantMessage

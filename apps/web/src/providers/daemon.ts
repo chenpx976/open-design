@@ -235,6 +235,10 @@ async function consumeDaemonRun({
   let terminalStatus: ChatRunStatusResponse | null = null;
   let lastEventId: string | null = initialLastEventId ?? null;
   let canceled = false;
+  let reconnects = 0;
+  const emitReconnecting = (detail: string) => {
+    handlers.onAgentEvent({ kind: 'status', label: 'reconnecting', detail });
+  };
   const cancelRun = () => {
     if (canceled) return;
     canceled = true;
@@ -248,7 +252,7 @@ async function consumeDaemonRun({
       return;
     }
 
-    for (let reconnects = 0; endStatus === null && reconnects < 5;) {
+    while (endStatus === null) {
       const qs = lastEventId ? `?after=${encodeURIComponent(lastEventId)}` : '';
       let resp: Response;
       try {
@@ -259,14 +263,42 @@ async function consumeDaemonRun({
       } catch (err) {
         if ((err as Error).name === 'AbortError') throw err;
         reconnects += 1;
+        emitReconnecting(`daemon stream lost; retry ${reconnects}`);
+        const status = await fetchChatRunStatus(runId);
+        if (status && isChatRunStatus(status.status) && status.status !== 'queued' && status.status !== 'running') {
+          terminalStatus = status;
+          endStatus = status.status;
+          exitCode = status.exitCode ?? null;
+          exitSignal = status.signal ?? null;
+          onRunStatus?.(endStatus);
+          break;
+        }
+        await sleep(reconnectDelayMs(reconnects));
         continue;
       }
 
       if (!resp.ok || !resp.body) {
         const text = await resp.text().catch(() => '');
-        handlers.onError(new Error(`daemon ${resp.status}: ${text || 'no body'}`));
-        return;
+        reconnects += 1;
+        emitReconnecting(`daemon stream unavailable (${resp.status}); retry ${reconnects}`);
+        const status = await fetchChatRunStatus(runId);
+        if (status && isChatRunStatus(status.status) && status.status !== 'queued' && status.status !== 'running') {
+          terminalStatus = status;
+          endStatus = status.status;
+          exitCode = status.exitCode ?? null;
+          exitSignal = status.signal ?? null;
+          onRunStatus?.(endStatus);
+          break;
+        }
+        if (resp.status === 404) {
+          handlers.onError(new Error(`daemon ${resp.status}: ${text || 'run not found'}`));
+          return;
+        }
+        await sleep(reconnectDelayMs(reconnects));
+        continue;
       }
+
+      reconnects = 0;
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -347,20 +379,25 @@ async function consumeDaemonRun({
           }
         }
       }
-      reconnects = sawStreamProgress ? 0 : reconnects + 1;
-    }
-
-    if (endStatus === null) {
-      const status = await fetchChatRunStatus(runId);
-      if (status && isChatRunStatus(status.status) && status.status !== 'queued' && status.status !== 'running') {
-        terminalStatus = status;
-        endStatus = status.status;
-        exitCode = status.exitCode ?? null;
-        exitSignal = status.signal ?? null;
-        onRunStatus?.(endStatus);
-      } else {
-        handlers.onError(new Error('daemon stream disconnected before run completed'));
-        return;
+      if (endStatus === null) {
+        reconnects += 1;
+        emitReconnecting(
+          sawStreamProgress
+            ? `daemon stream closed; reconnecting`
+            : `waiting for daemon stream; retry ${reconnects}`,
+        );
+        if (!sawStreamProgress) {
+          const status = await fetchChatRunStatus(runId);
+          if (status && isChatRunStatus(status.status) && status.status !== 'queued' && status.status !== 'running') {
+            terminalStatus = status;
+            endStatus = status.status;
+            exitCode = status.exitCode ?? null;
+            exitSignal = status.signal ?? null;
+            onRunStatus?.(endStatus);
+            continue;
+          }
+        }
+        await sleep(reconnectDelayMs(reconnects));
       }
     }
 
@@ -383,6 +420,14 @@ async function consumeDaemonRun({
   } finally {
     cancelSignal?.removeEventListener('abort', cancelRun);
   }
+}
+
+function reconnectDelayMs(reconnects: number): number {
+  return Math.min(5_000, 500 * Math.max(1, reconnects));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, ms));
 }
 
 function isChatRunStatus(value: unknown): value is ChatRunStatus {

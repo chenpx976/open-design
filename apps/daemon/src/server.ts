@@ -4939,6 +4939,9 @@ export async function startServer({
       createSseResponse,
       createSseErrorPayload,
       store: agentRunStore,
+      stalePersistedActiveMs: agentRuntime.executionMode === 'inline'
+        ? Number(process.env.OD_AGENT_STALE_INLINE_RUN_MS) || 30_000
+        : 0,
     }),
   };
 

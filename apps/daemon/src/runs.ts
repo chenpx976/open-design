@@ -10,6 +10,7 @@ export function createChatRunService({
   maxEvents = 2_000,
   ttlMs = 30 * 60 * 1000,
   shutdownGraceMs = 3_000,
+  stalePersistedActiveMs = 0,
 }) {
   const runs = new Map();
   const logPersistenceError = (err) => {
@@ -75,36 +76,90 @@ export function createChatRunService({
 
   const hydrateFromPersisted = (persisted, persistedEvents = []) => {
     const maxEventId = persistedEvents.reduce((max, record) => Math.max(max, Number(record.id) || 0), 0);
+    const recovered = recoverStalePersistedActiveRun(persisted, persistedEvents, maxEventId);
     const run = {
-      id: persisted.id,
-      projectId: persisted.projectId ?? null,
-      conversationId: persisted.conversationId ?? null,
-      assistantMessageId: persisted.assistantMessageId ?? null,
-      clientRequestId: persisted.clientRequestId ?? null,
-      agentId: persisted.agentId ?? null,
-      status: persisted.status,
-      createdAt: persisted.createdAt,
-      updatedAt: persisted.updatedAt,
-      events: persistedEvents.map((record) => ({
+      id: recovered.persisted.id,
+      projectId: recovered.persisted.projectId ?? null,
+      conversationId: recovered.persisted.conversationId ?? null,
+      assistantMessageId: recovered.persisted.assistantMessageId ?? null,
+      clientRequestId: recovered.persisted.clientRequestId ?? null,
+      agentId: recovered.persisted.agentId ?? null,
+      status: recovered.persisted.status,
+      createdAt: recovered.persisted.createdAt,
+      updatedAt: recovered.persisted.updatedAt,
+      events: recovered.events.map((record) => ({
         id: record.id,
         event: record.event,
         data: record.data,
         timestamp: record.timestamp,
       })),
-      nextEventId: maxEventId + 1,
+      nextEventId: recovered.nextEventId,
       clients: new Set(),
       waiters: new Set(),
       child: null,
       acpSession: null,
-      exitCode: persisted.exitCode ?? null,
-      signal: persisted.signal ?? null,
+      exitCode: recovered.persisted.exitCode ?? null,
+      signal: recovered.persisted.signal ?? null,
       cancelRequested: false,
       persistedOnly: true,
       persistQueue: Promise.resolve(),
     };
     runs.set(run.id, run);
+    if (recovered.didRecover) {
+      persist(async () => {
+        for (const record of recovered.addedEvents) {
+          await store?.appendEvent?.(run, record);
+        }
+        await store?.updateRun?.(run);
+      }, run);
+    }
     if (TERMINAL_RUN_STATUSES.has(run.status)) scheduleCleanup(run);
     return run;
+  };
+
+  const recoverStalePersistedActiveRun = (persisted, persistedEvents, maxEventId) => {
+    const active = !TERMINAL_RUN_STATUSES.has(persisted.status);
+    const staleMs = Number(stalePersistedActiveMs) || 0;
+    const ageMs = Date.now() - Number(persisted.updatedAt ?? persisted.createdAt ?? 0);
+    if (!active || staleMs <= 0 || ageMs < staleMs) {
+      return {
+        persisted,
+        events: persistedEvents,
+        nextEventId: maxEventId + 1,
+        didRecover: false,
+        addedEvents: [],
+      };
+    }
+    const now = Date.now();
+    const errorRecord = {
+      id: maxEventId + 1,
+      event: 'error',
+      data: createSseErrorPayload(
+        'AGENT_EXECUTION_FAILED',
+        'Agent run was interrupted because the daemon process disconnected before it finished. Retry the turn to continue.',
+        { retryable: true },
+      ),
+      timestamp: now,
+    };
+    const endRecord = {
+      id: maxEventId + 2,
+      event: 'end',
+      data: { code: 1, signal: 'DAEMON_RESTART', status: 'failed' },
+      timestamp: now,
+    };
+    return {
+      persisted: {
+        ...persisted,
+        status: 'failed',
+        updatedAt: now,
+        exitCode: 1,
+        signal: 'DAEMON_RESTART',
+      },
+      events: [...persistedEvents, errorRecord, endRecord],
+      nextEventId: maxEventId + 3,
+      didRecover: true,
+      addedEvents: [errorRecord, endRecord],
+    };
   };
 
   const hydrateAsync = async (id) => {
