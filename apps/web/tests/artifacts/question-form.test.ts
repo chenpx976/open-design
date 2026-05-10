@@ -28,4 +28,19 @@ describe('splitOnQuestionForms', () => {
       },
     });
   });
+
+  it('renders completed options while the question-form JSON tail is still streaming', () => {
+    const segments = splitOnQuestionForms(
+      '<question-form id="direction" title="Pick a visual direction">{"questions":[{"id":"tone","label":"Tone","type":"radio","options":["A","B"]}',
+    );
+
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({
+      kind: 'form',
+      form: {
+        id: 'direction',
+        questions: [{ id: 'tone', label: 'Tone', type: 'radio', options: ['A', 'B'] }],
+      },
+    });
+  });
 });

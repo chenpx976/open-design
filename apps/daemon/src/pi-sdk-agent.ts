@@ -176,6 +176,21 @@ function summarizePiModel(model) {
   return id || null;
 }
 
+function piToolResultText(result) {
+  const obj = isRecord(result) ? result : {};
+  const content = obj.content;
+  if (Array.isArray(content)) {
+    return content
+      .map((item) =>
+        isRecord(item) && item.type === 'text'
+          ? String(item.text ?? '')
+          : JSON.stringify(item),
+      )
+      .join('\n');
+  }
+  return typeof content === 'string' ? content : '';
+}
+
 async function createJustBashToolDefinition(projectFs, cwd, createBashToolDefinition) {
   const { Bash, ReadWriteFs } = await import('just-bash');
   if (!projectFs || projectFs.kind !== 'local') {
@@ -315,29 +330,18 @@ function emitPiSdkEvent(event, send, noteActivity) {
     send('agent', {
       type: 'tool_result',
       toolUseId: event.toolCallId ?? null,
-      content: typeof event.delta === 'string' ? event.delta : '',
+      content:
+        piToolResultText(event.partialResult) ||
+        (typeof event.delta === 'string' ? event.delta : ''),
       isError: false,
     });
     return;
   }
   if (event.type === 'tool_execution_end') {
-    const result = isRecord(event.result) ? event.result : {};
-    const content = result.content;
-    const text = Array.isArray(content)
-      ? content
-          .map((item) =>
-            isRecord(item) && item.type === 'text'
-              ? String(item.text ?? '')
-              : JSON.stringify(item),
-          )
-          .join('\n')
-      : typeof content === 'string'
-        ? content
-        : '';
     send('agent', {
       type: 'tool_result',
       toolUseId: event.toolCallId ?? null,
-      content: text,
+      content: piToolResultText(event.result),
       isError: event.isError === true,
     });
     return;

@@ -997,6 +997,29 @@ export function telemetryPromptFromRunRequest(message, currentPrompt) {
   return typeof currentPrompt === 'string' ? currentPrompt : message;
 }
 
+function renderLocaleInstruction(locale) {
+  if (typeof locale !== 'string') return '';
+  const value = locale.trim();
+  if (!/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/.test(value)) return '';
+  const languageName = {
+    'zh-CN': 'Simplified Chinese',
+    'zh-TW': 'Traditional Chinese',
+    en: 'English',
+    ja: 'Japanese',
+    ko: 'Korean',
+    fr: 'French',
+    de: 'German',
+    'es-ES': 'Spanish',
+    'pt-BR': 'Brazilian Portuguese',
+    ru: 'Russian',
+  }[value] ?? value;
+  return [
+    '# UI language',
+    `Use ${languageName} (${value}) for all user-facing prose and every <question-form> title, label, help text, option, card, and submitLabel.`,
+    'Keep filenames, code, shell commands, CSS/HTML identifiers, and source excerpts in their original language.',
+  ].join('\n');
+}
+
 const CLOUDFLARE_PAGES_PROJECT_METADATA_KEY = 'cloudflarePagesProjectName';
 
 function cloudflarePagesDeploymentMetadata(projectName) {
@@ -5063,6 +5086,7 @@ export async function startServer({
       commentAttachments = [],
       model,
       reasoning,
+      locale,
       research,
     } = chatBody;
     if (typeof projectId === 'string' && projectId) run.projectId = projectId;
@@ -5208,6 +5232,7 @@ export async function startServer({
     };
     const runtimeToolPrompt = createAgentRuntimeToolPrompt(daemonUrl, toolTokenGrant);
     const commentHint = renderCommentAttachmentHint(safeCommentAttachments);
+    const localeInstruction = renderLocaleInstruction(locale);
 
     const { prompt: daemonSystemPrompt, activeSkillDir, critiqueShouldRun } =
       await composeDaemonSystemPrompt({
@@ -5296,7 +5321,7 @@ export async function startServer({
       .join('\n\n---\n\n');
     const instructionPrompt = composeLiveInstructionPrompt({
       daemonSystemPrompt,
-      runtimeToolPrompt,
+      runtimeToolPrompt: [runtimeToolPrompt, localeInstruction].filter(Boolean).join('\n\n'),
       clientSystemPrompt: clientInstructionPrompt,
       finalPromptOverride: codexImagegenOverride,
     });

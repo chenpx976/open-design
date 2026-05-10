@@ -150,6 +150,7 @@ export function AssistantMessage({
         ) : null}
         <AssistantFooter
           streaming={streaming}
+          runStatus={message.runStatus}
           startedAt={message.startedAt}
           endedAt={message.endedAt}
           usage={usage}
@@ -215,12 +216,14 @@ function appendRoleModel(label: string, model: string | null): string {
 
 function AssistantFooter({
   streaming,
+  runStatus,
   startedAt,
   endedAt,
   usage,
   hasUnfinishedTodos,
 }: {
   streaming: boolean;
+  runStatus: ChatMessage["runStatus"];
   startedAt: number | undefined;
   endedAt: number | undefined;
   usage: Extract<AgentEvent, { kind: "usage" }> | undefined;
@@ -238,6 +241,8 @@ function AssistantFooter({
       <span className="assistant-label">
         {streaming
           ? t("assistant.workingLabel")
+          : runStatus === "failed"
+          ? t("designs.status.failed")
           : hasUnfinishedTodos
           ? t("assistant.unfinishedLabel")
           : t("assistant.doneLabel")}
@@ -848,6 +853,10 @@ function buildBlocks(events: AgentEvent[]): Block[] {
       continue;
     }
     if (ev.kind === "tool_result") continue;
+    if (ev.kind === "error") {
+      out.push({ kind: "status", label: ev.message });
+      continue;
+    }
     if (ev.kind === "status") {
       if (
         ev.label === "streaming" ||

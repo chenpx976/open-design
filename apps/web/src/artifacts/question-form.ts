@@ -105,7 +105,7 @@ export function splitOnQuestionForms(input: string): FormSegment[] {
       }
       const attrs = parseAttrs(m[1] ?? '');
       const partialBody = input.slice(openEnd);
-      const partial = tryParseForm(partialBody, attrs);
+      const partial = tryParseForm(partialBody, attrs) ?? tryParsePartialForm(partialBody, attrs);
       if (partial) {
         out.push({ kind: 'form', form: partial, raw: input.slice(openStart) });
       } else {
@@ -231,6 +231,60 @@ function tryParseForm(body: string, attrs: Record<string, string>): QuestionForm
     ...(description ? { description } : {}),
     ...(submitLabel ? { submitLabel } : {}),
   };
+}
+
+function tryParsePartialForm(body: string, attrs: Record<string, string>): QuestionForm | null {
+  const stripped = stripCodeFence(body);
+  if (!stripped.trimStart().startsWith('{')) return null;
+  const repaired = repairJsonFragment(stripped);
+  return repaired ? tryParseForm(repaired, attrs) : null;
+}
+
+function stripCodeFence(body: string): string {
+  return body
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+}
+
+function repairJsonFragment(input: string): string | null {
+  let source = input.trim();
+  if (!source) return null;
+  source = source.replace(/,\s*$/g, '');
+  const stack: string[] = [];
+  let inString = false;
+  let escaping = false;
+  for (const ch of source) {
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+      } else if (ch === '\\') {
+        escaping = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === '{') stack.push('}');
+    else if (ch === '[') stack.push(']');
+    else if (ch === '}' || ch === ']') {
+      if (stack[stack.length - 1] !== ch) return null;
+      stack.pop();
+    }
+  }
+  if (inString || escaping || stack.length === 0) return null;
+  const closed = source.replace(/,\s*([}\]])/g, '$1') + stack.reverse().join('');
+  try {
+    JSON.parse(closed);
+    return closed;
+  } catch {
+    return null;
+  }
 }
 
 function normalizeType(raw: unknown): QuestionType {

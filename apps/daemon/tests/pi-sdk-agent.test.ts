@@ -182,6 +182,41 @@ describe('runPiSdkAgent contract', () => {
     });
   });
 
+  it('maps Pi streaming tool partial results into OD tool_result updates', async () => {
+    const { runPiSdkAgent } = await import('../src/pi-sdk-agent.js');
+    const events: any[] = [];
+    mockState.promptImpl = async () => {
+      const emit = mockState.subscribers[0]!;
+      emit({
+        type: 'tool_execution_update',
+        toolCallId: 'tool-1',
+        partialResult: {
+          content: [{ type: 'text', text: 'line 1\n' }],
+        },
+      });
+      emit({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'ok' } });
+    };
+
+    await runPiSdkAgent({
+      cwd,
+      prompt: 'stream tool',
+      model: 'default',
+      reasoning: 'default',
+      signal: undefined,
+      send: (channel: string, payload: unknown) => events.push({ channel, payload }),
+    });
+
+    expect(events).toContainEqual({
+      channel: 'agent',
+      payload: {
+        type: 'tool_result',
+        toolUseId: 'tool-1',
+        content: 'line 1\n',
+        isError: false,
+      },
+    });
+  });
+
   it('does not write escaped absolute targets outside the local ProjectFs root', async () => {
     const { runPiSdkAgent } = await import('../src/pi-sdk-agent.js');
 

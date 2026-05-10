@@ -96,7 +96,7 @@ export interface Project {
   createdAt: number;
   updatedAt: number;
   status?: ProjectStatusInfo;
-  pendingPrompt?: string;
+  pendingPrompt?: string | null;
   metadata?: ProjectMetadata;
 }
 

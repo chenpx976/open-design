@@ -81,6 +81,7 @@ export interface DaemonStreamOptions {
   // options and falls back to the CLI default when missing.
   model?: string | null;
   reasoning?: string | null;
+  locale?: string | null;
   research?: ResearchOptions;
   initialLastEventId?: string | null;
   onRunCreated?: (runId: string) => void;
@@ -114,6 +115,7 @@ export async function streamViaDaemon({
   commentAttachments,
   model,
   reasoning,
+  locale,
   research,
   initialLastEventId,
   onRunCreated,
@@ -141,6 +143,7 @@ export async function streamViaDaemon({
     commentAttachments: commentAttachments ?? [],
     model: model ?? null,
     reasoning: reasoning ?? null,
+    locale: locale ?? null,
     ...(research ? { research } : {}),
   };
   const body = JSON.stringify(request);
@@ -330,7 +333,8 @@ async function consumeDaemonRun({
           if (event.event === 'error') {
             onRunStatus?.('failed');
             const data = event.data as SseErrorPayload;
-            handlers.onError(new Error(String(data.error?.message ?? data.message ?? 'daemon error')));
+            const message = String(data.error?.message ?? data.message ?? 'daemon error');
+            handlers.onError(new Error(message));
             return;
           }
 
@@ -437,6 +441,9 @@ function translateAgentEvent(data: DaemonAgentPayload): AgentEvent | null {
       content: String(data.content ?? ''),
       isError: Boolean(data.isError),
     };
+  }
+  if (t === 'error' && typeof data.message === 'string') {
+    return { kind: 'error', message: data.message };
   }
   if (t === 'usage') {
     const usage = (data.usage ?? {}) as Record<string, number>;

@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { createHtmlArtifactManifest, inferLegacyManifest } from '../artifacts/manifest';
 import { createArtifactParser } from '../artifacts/parser';
-import { useT } from '../i18n';
+import { useI18n } from '../i18n';
 import { streamMessage } from '../providers/anthropic';
 import {
   fetchChatRunStatus,
@@ -234,7 +234,7 @@ export function ProjectView({
   onProjectChange,
   onProjectsRefresh,
 }: Props) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(
     null,
@@ -1286,6 +1286,7 @@ export function ProjectView({
           research: meta?.research,
           model: choice?.model ?? null,
           reasoning: choice?.reasoning ?? null,
+          locale,
           onRunCreated: (runId) => {
             updateMessageById(assistantId, (prev) => ({ ...prev, runId, runStatus: 'queued' }), true);
           },
@@ -1326,6 +1327,7 @@ export function ProjectView({
       streaming,
       messages,
       config,
+      locale,
       agentsById,
       composedSystemPrompt,
       onTouchProject,
@@ -1776,7 +1778,7 @@ export function ProjectView({
   // the local snapshot and the persisted pendingPrompt so future
   // conversation switches don't keep re-seeding the composer.
   const [initialDraft, setInitialDraft] = useState<string | undefined>(
-    project.pendingPrompt,
+    project.pendingPrompt ?? undefined,
   );
   useEffect(() => {
     if (initialDraft && activeConversationId) {

@@ -24,6 +24,8 @@ export interface ChatRequest {
   commentAttachments?: ChatCommentAttachment[];
   model?: string | null;
   reasoning?: string | null;
+  /** UI/system locale for user-facing agent prose and question forms. */
+  locale?: string | null;
   research?: ResearchOptions;
 }
 
@@ -109,6 +111,7 @@ export type PersistedAgentEvent =
     }
   | { kind: 'tool_use'; id: string; name: string; input: unknown }
   | { kind: 'tool_result'; toolUseId: string; content: string; isError: boolean }
+  | { kind: 'error'; message: string }
   | { kind: 'usage'; inputTokens?: number; outputTokens?: number; costUsd?: number; durationMs?: number }
   | { kind: 'raw'; line: string };
 
