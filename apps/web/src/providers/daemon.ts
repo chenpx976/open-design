@@ -122,9 +122,10 @@ export async function streamViaDaemon({
   onRunStatus,
   onRunEventId,
 }: DaemonStreamOptions): Promise<void> {
-  // Local CLIs are single-turn print-mode programs, so we collapse the whole
-  // chat into one string. If this becomes too noisy for long histories, the
-  // fix is to only include the final user turn.
+  // The daemon-hosted Pi agent receives one prompt per OD chat run, so we
+  // collapse the visible conversation into a single string. If this becomes
+  // too noisy for long histories, the fix is to only include the final user
+  // turn.
   const transcript = history
     .map((m) => `## ${m.role}\n${m.content.trim()}`)
     .join('\n\n');

@@ -254,7 +254,7 @@ describe('app-config', () => {
       expect(cfg.agentModels).toBeUndefined();
     });
 
-    it('persists supported per-agent CLI env keys and drops everything else', async () => {
+    it('drops per-agent CLI env overrides because the daemon embeds Pi SDK', async () => {
       await writeAppConfig(dataDir, {
         agentCliEnv: {
           claude: {
@@ -277,13 +277,10 @@ describe('app-config', () => {
 
       const cfg = await readAppConfig(dataDir);
 
-      expect(cfg.agentCliEnv).toEqual({
-        claude: { CLAUDE_CONFIG_DIR: '~/.claude-2' },
-        codex: { CODEX_HOME: '~/.codex-alt', CODEX_BIN: '~/bin/codex-next' },
-      });
+      expect(cfg.agentCliEnv).toBeUndefined();
     });
 
-    it('drops agentCliEnv entries that collide with Object.prototype keys', async () => {
+    it('drops agentCliEnv entries, including Object.prototype collisions', async () => {
       await writeAppConfig(dataDir, {
         agentCliEnv: {
           toString: {
@@ -300,9 +297,7 @@ describe('app-config', () => {
 
       const cfg = await readAppConfig(dataDir);
 
-      expect(cfg.agentCliEnv).toEqual({
-        claude: { CLAUDE_CONFIG_DIR: '~/.claude-2' },
-      });
+      expect(cfg.agentCliEnv).toBeUndefined();
     });
 
     it('clears agentCliEnv when null or an empty object is sent', async () => {
@@ -312,7 +307,7 @@ describe('app-config', () => {
         },
         onboardingCompleted: true,
       });
-      expect((await readAppConfig(dataDir)).agentCliEnv).toBeDefined();
+      expect((await readAppConfig(dataDir)).agentCliEnv).toBeUndefined();
 
       await writeAppConfig(dataDir, { agentCliEnv: null });
       let cfg = await readAppConfig(dataDir);

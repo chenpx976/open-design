@@ -159,6 +159,56 @@ function migrate(db: SqliteDb): void {
     CREATE INDEX IF NOT EXISTS idx_deployments_project
       ON deployments(project_id, updated_at DESC);
 
+    CREATE TABLE IF NOT EXISTS agent_runs (
+      id TEXT PRIMARY KEY,
+      project_id TEXT,
+      conversation_id TEXT,
+      assistant_message_id TEXT,
+      client_request_id TEXT,
+      agent_id TEXT,
+      status TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      exit_code INTEGER,
+      signal TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_agent_runs_project
+      ON agent_runs(project_id, updated_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_agent_runs_conversation
+      ON agent_runs(conversation_id, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS agent_run_events (
+      run_id TEXT NOT NULL,
+      event_id INTEGER NOT NULL,
+      event TEXT NOT NULL,
+      data_json TEXT NOT NULL,
+      timestamp INTEGER NOT NULL,
+      PRIMARY KEY(run_id, event_id),
+      FOREIGN KEY(run_id) REFERENCES agent_runs(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_agent_run_events_run
+      ON agent_run_events(run_id, event_id);
+
+    CREATE TABLE IF NOT EXISTS agent_run_jobs (
+      id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      locked_at INTEGER,
+      locked_by TEXT,
+      error TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY(run_id) REFERENCES agent_runs(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_agent_run_jobs_status
+      ON agent_run_jobs(status, created_at);
+
     CREATE TABLE IF NOT EXISTS routines (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,

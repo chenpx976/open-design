@@ -2,15 +2,15 @@
 //
 //   - testProviderConnection: posts a tiny "Reply with only: ok" request to
 //     a BYOK API endpoint and reports a categorized result.
-//   - testAgentConnection: spawns a Local CLI adapter with the same prompt,
-//     drives the existing stream parser through a collector sink, and treats
-//     assistant text as proof that the CLI can run unless the text is an
+//   - testAgentConnection: runs the daemon-hosted Pi SDK agent with the same
+//     prompt, drives the existing event collector sink, and treats assistant
+//     text as proof that the agent can run unless the text is an
 //     explicit model-selection error.
 //
 // Both functions persist nothing — no project, no chat record, no
 // media-config write. The intent is to give Settings a definite "your
 // configuration works" answer without users having to send a real chat to
-// discover that the API key, model, base URL, or CLI is broken.
+// discover that the API key, model, base URL, or Pi configuration is broken.
 //
 // The streaming counterpart for chat lives in `server.ts` under the
 // `/api/proxy/*/stream` routes; both paths share the base URL policy from
@@ -22,8 +22,6 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   getAgentDef,
-  resolveAgentBin,
-  spawnEnvForAgent,
 } from './agents.js';
 import { createCommandInvocation } from '@open-design/platform';
 import { attachAcpSession } from './acp.js';
@@ -32,6 +30,8 @@ import { createClaudeStreamHandler } from './claude-stream.js';
 import { createCopilotStreamHandler } from './copilot-stream.js';
 import { createJsonEventStreamHandler } from './json-event-stream.js';
 import { agentCliEnvForAgent, validateAgentCliEnv } from './app-config.js';
+import { createInlinePiAgentRuntime } from './agent-runtime.js';
+import { createLocalProjectFs } from './project-fs.js';
 import {
   isLoopbackApiHost,
   validateBaseUrl,
@@ -61,6 +61,7 @@ const SAMPLE_MAX_CHARS = 120;
 // before producing a visible `ok`.
 const PROVIDER_MAX_TOKENS = 100;
 const SMOKE_PROMPT = 'Reply with only: ok';
+const AGENT_RUNTIME = createInlinePiAgentRuntime();
 
 // Catches `Bearer …`, `x-api-key`/`api-key`/`x-goog-api-key` headers, and
 // `?key=…` query strings. The provider helpers all funnel error text
@@ -881,28 +882,13 @@ export async function testAgentConnection(
       detail: `Unknown agent id: ${input.agentId}`,
     };
   }
-  const configuredAgentEnv = agentCliEnvForAgent(
-    validateAgentCliEnv(input.agentCliEnv),
-    input.agentId,
-  );
-  const resolvedBin = resolveAgentBin(input.agentId, configuredAgentEnv);
-  if (!resolvedBin) {
-    return {
-      ok: false,
-      kind: 'agent_not_installed',
-      latencyMs: Date.now() - start,
-      model,
-      agentName: def.name,
-    };
-  }
 
   const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'od-conn-test-'));
-  let child: AgentChild | null = null;
-  let childExit: Promise<AgentChildExit> | null = null;
-  let childClosed = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let abortHandler: (() => void) | null = null;
   const sink = createAgentSink();
+  const abortController = new AbortController();
+  let resolvedModel: string | undefined;
 
   const resultFromAgentText = (text: string): ConnectionTestResponse => {
     const latencyMs = Date.now() - start;
@@ -918,6 +904,7 @@ export async function testAgentConnection(
         kind: 'not_found_model',
         latencyMs,
         model,
+        ...(resolvedModel ? { resolvedModel } : {}),
         agentName: def.name,
         detail,
       };
@@ -933,6 +920,7 @@ export async function testAgentConnection(
       kind: 'success',
       latencyMs,
       model,
+      ...(resolvedModel ? { resolvedModel } : {}),
       agentName: def.name,
       sample,
     };
@@ -952,6 +940,7 @@ export async function testAgentConnection(
         kind: 'not_found_model',
         latencyMs,
         model,
+        ...(resolvedModel ? { resolvedModel } : {}),
         agentName: def.name,
         detail,
       };
@@ -964,6 +953,7 @@ export async function testAgentConnection(
       kind: 'agent_spawn_failed',
       latencyMs,
       model,
+      ...(resolvedModel ? { resolvedModel } : {}),
       agentName: def.name,
       detail,
     };
@@ -979,143 +969,21 @@ export async function testAgentConnection(
       kind: 'timeout',
       latencyMs,
       model,
+      ...(resolvedModel ? { resolvedModel } : {}),
       agentName: def.name,
     };
   };
 
   try {
-    let args: string[];
-    try {
-      args = def.buildArgs(
-        SMOKE_PROMPT,
-        [],
-        [],
-        { model: input.model ?? null, reasoning: input.reasoning ?? null },
-        { cwd: tempDir },
-      );
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      return {
-        ok: false,
-        kind: 'agent_spawn_failed',
-        latencyMs: Date.now() - start,
-        model,
-        agentName: def.name,
-        detail: redactSecrets(detail),
-      };
-    }
-    const stdinMode =
-      def.promptViaStdin || def.streamFormat === 'acp-json-rpc' ? 'pipe' : 'ignore';
-    const env = spawnEnvForAgent(
-      input.agentId,
-      {
-        ...process.env,
-        ...(def.env || {}),
-      },
-      configuredAgentEnv,
-    );
-    const invocation = createCommandInvocation({
-      command: resolvedBin,
-      args,
-      env,
-    });
-    child = spawn(invocation.command, invocation.args, {
-      env,
-      stdio: [stdinMode, 'pipe', 'pipe'],
-      cwd: tempDir,
-      shell: false,
-      windowsVerbatimArguments: invocation.windowsVerbatimArguments,
-    });
-    childExit = new Promise<AgentChildExit>((resolve) => {
-      child!.once('error', (err) => {
-        childClosed = true;
-        resolve({ kind: 'spawnError', error: err });
-      });
-      child!.once('close', (code, signal) => {
-        childClosed = true;
-        resolve({ kind: 'exit', code, signal });
-      });
-    });
-
-    const { acpSession } = attachAgentStreamHandlers(
-      def,
-      child,
-      SMOKE_PROMPT,
-      tempDir,
-      input.model,
-      sink.send,
-    );
-
-    const resultFromChildExit = (
-      winner: AgentChildExit,
-    ): ConnectionTestResponse => {
-      if (winner.kind === 'spawnError') {
-        const latencyMs = Date.now() - start;
-        const detail = redactSecrets(winner.error.message);
-        const errnoCode = (winner.error as NodeJS.ErrnoException).code;
-        const isMissing = errnoCode === 'ENOENT';
-        console.warn(
-          `[test:agent] ${def.name} → spawn_failed: ${detail}`,
-        );
-        return {
-          ok: false,
-          kind: isMissing ? 'agent_not_installed' : 'agent_spawn_failed',
-          latencyMs,
-          model,
-          agentName: def.name,
-          detail,
-        };
-      }
-
-      const latencyMs = Date.now() - start;
-      const buffered = sink.getText().trim();
-      const exitedCleanly = winner.code === 0 && !winner.signal;
-      if (buffered) {
-        const rawSample = truncateSample(buffered);
-        if (rawSample && isLikelyModelErrorText(rawSample)) {
-          return resultFromAgentText(buffered);
-        }
-        if (exitedCleanly) return resultFromAgentText(buffered);
-      }
-      const stderrTail = sink.getStderrTail().trim();
-      const acpFatal = Boolean(acpSession?.hasFatalError?.());
-      const detail = redactSecrets(
-        [
-          winner.code != null ? `exit ${winner.code}` : null,
-          winner.signal ? `signal ${winner.signal}` : null,
-          stderrTail ? `stderr: ${stderrTail.slice(-200)}` : null,
-          buffered ? `stdout: ${buffered.slice(-200)}` : null,
-        ]
-          .filter(Boolean)
-          .join(' · '),
-      );
-      const label = buffered ? 'exit_failed' : 'no_text';
-      console.warn(
-        `[test:agent] ${def.name} → ${label} (${detail || 'no detail'})`,
-      );
-      return {
-        ok: false,
-        kind: acpFatal || !exitedCleanly ? 'agent_spawn_failed' : 'unknown',
-        latencyMs,
-        model,
-        agentName: def.name,
-        detail: detail || 'Agent exited without producing assistant text',
-      };
-    };
-
-    if (def.promptViaStdin && child.stdin && def.streamFormat !== 'pi-rpc') {
-      child.stdin.on('error', (err: NodeJS.ErrnoException) => {
-        if (err.code !== 'EPIPE') {
-          sink.send('error', {
-            message: `stdin: ${err.message}`,
-          });
-        }
-      });
-      child.stdin.end(SMOKE_PROMPT, 'utf8');
-    }
     const cancellationPromise = new Promise<{ kind: 'timeout' } | { kind: 'aborted' }>((resolve) => {
-      timer = setTimeout(() => resolve({ kind: 'timeout' }), AGENT_TIMEOUT_MS);
-      abortHandler = () => resolve({ kind: 'aborted' });
+      timer = setTimeout(() => {
+        abortController.abort();
+        resolve({ kind: 'timeout' });
+      }, AGENT_TIMEOUT_MS);
+      abortHandler = () => {
+        abortController.abort();
+        resolve({ kind: 'aborted' });
+      };
       if (input.signal?.aborted) {
         abortHandler();
       } else {
@@ -1126,17 +994,34 @@ export async function testAgentConnection(
       kind: 'streamError' as const,
       error,
     }));
+    const projectFs = createLocalProjectFs(tempDir);
+    const runPromise = AGENT_RUNTIME.run({
+      cwd: tempDir,
+      prompt: SMOKE_PROMPT,
+      model: input.model ?? null,
+      reasoning: input.reasoning ?? null,
+      projectFs,
+      signal: abortController.signal,
+      events: {
+        emit: sink.send,
+      },
+    }).then((result) => {
+      if (typeof result?.resolvedModel === 'string' && result.resolvedModel.trim()) {
+        resolvedModel = result.resolvedModel.trim();
+      }
+      return { kind: 'done' as const, result };
+    });
 
     const winner = await Promise.race([
       sink.result,
-      childExit,
+      runPromise,
       cancellationPromise,
     ]);
 
     if (winner.kind === 'text') {
       const completion = await Promise.race([
         streamError,
-        childExit,
+        runPromise,
         cancellationPromise,
       ]);
       if (completion.kind === 'streamError') {
@@ -1145,7 +1030,10 @@ export async function testAgentConnection(
       if (completion.kind === 'timeout' || completion.kind === 'aborted') {
         return resultFromCancellation(completion.kind);
       }
-      return resultFromChildExit(completion);
+      if (completion.kind === 'done' && completion.result?.error) {
+        return resultFromStreamError(completion.result.error);
+      }
+      return resultFromAgentText(sink.getText());
     }
     if (winner.kind === 'streamError') {
       return resultFromStreamError(winner.error);
@@ -1153,7 +1041,20 @@ export async function testAgentConnection(
     if (winner.kind === 'timeout' || winner.kind === 'aborted') {
       return resultFromCancellation(winner.kind);
     }
-    return resultFromChildExit(winner);
+    if (winner.kind === 'done' && winner.result?.error) {
+      return resultFromStreamError(winner.result.error);
+    }
+    const buffered = sink.getText().trim();
+    if (buffered) return resultFromAgentText(buffered);
+    return {
+      ok: false,
+      kind: 'unknown',
+      latencyMs: Date.now() - start,
+      model,
+      ...(resolvedModel ? { resolvedModel } : {}),
+      agentName: def.name,
+      detail: 'Pi SDK completed without producing assistant text',
+    };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     return {
@@ -1161,6 +1062,7 @@ export async function testAgentConnection(
       kind: 'agent_spawn_failed',
       latencyMs: Date.now() - start,
       model,
+      ...(resolvedModel ? { resolvedModel } : {}),
       agentName: def.name,
       detail: redactSecrets(detail),
     };
@@ -1169,33 +1071,8 @@ export async function testAgentConnection(
     if (abortHandler) {
       input.signal?.removeEventListener('abort', abortHandler);
     }
+    abortController.abort();
     sink.dispose();
-    if (child && !childClosed) {
-      try {
-        child.kill('SIGTERM');
-      } catch {
-        // Already gone — nothing to do.
-      }
-      const closedAfterTerm = childExit
-        ? await Promise.race([
-            childExit.then(() => true),
-            delay(AGENT_KILL_GRACE_MS).then(() => false),
-          ])
-        : false;
-      if (!closedAfterTerm && !childClosed) {
-        try {
-          child.kill('SIGKILL');
-        } catch {
-          // Already gone — nothing to do.
-        }
-        if (childExit) {
-          await Promise.race([
-            childExit.catch(() => null),
-            delay(AGENT_KILL_GRACE_MS),
-          ]);
-        }
-      }
-    }
     await fsp
       .rm(tempDir, { recursive: true, force: true })
       .catch(() => {

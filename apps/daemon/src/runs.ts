@@ -6,11 +6,24 @@ export const TERMINAL_RUN_STATUSES = new Set(['succeeded', 'failed', 'canceled']
 export function createChatRunService({
   createSseResponse,
   createSseErrorPayload,
+  store = null,
   maxEvents = 2_000,
   ttlMs = 30 * 60 * 1000,
   shutdownGraceMs = 3_000,
 }) {
   const runs = new Map();
+  const persist = (operation) => {
+    try {
+      const result = operation?.();
+      if (result && typeof result.then === 'function') {
+        void result.catch((err) => {
+          console.warn('[runs] persistence write failed:', err instanceof Error ? err.message : String(err));
+        });
+      }
+    } catch (err) {
+      console.warn('[runs] persistence write failed:', err instanceof Error ? err.message : String(err));
+    }
+  };
 
   const create = (meta = {}) => {
     const now = Date.now();
@@ -35,10 +48,61 @@ export function createChatRunService({
       cancelRequested: false,
     };
     runs.set(run.id, run);
+    persist(() => store?.createRun?.(run));
     return run;
   };
 
-  const get = (id) => runs.get(id) ?? null;
+  const hydrate = (id) => {
+    const persisted = store?.getRun?.(id);
+    if (persisted && typeof persisted.then === 'function') return null;
+    if (!persisted) return null;
+    const persistedEvents = store?.listRunEventsAfter?.(id, 0) ?? [];
+    if (persistedEvents && typeof persistedEvents.then === 'function') return null;
+    return hydrateFromPersisted(persisted, persistedEvents);
+  };
+
+  const hydrateFromPersisted = (persisted, persistedEvents = []) => {
+    const maxEventId = persistedEvents.reduce((max, record) => Math.max(max, Number(record.id) || 0), 0);
+    const run = {
+      id: persisted.id,
+      projectId: persisted.projectId ?? null,
+      conversationId: persisted.conversationId ?? null,
+      assistantMessageId: persisted.assistantMessageId ?? null,
+      clientRequestId: persisted.clientRequestId ?? null,
+      agentId: persisted.agentId ?? null,
+      status: persisted.status,
+      createdAt: persisted.createdAt,
+      updatedAt: persisted.updatedAt,
+      events: persistedEvents.map((record) => ({
+        id: record.id,
+        event: record.event,
+        data: record.data,
+        timestamp: record.timestamp,
+      })),
+      nextEventId: maxEventId + 1,
+      clients: new Set(),
+      waiters: new Set(),
+      child: null,
+      acpSession: null,
+      exitCode: persisted.exitCode ?? null,
+      signal: persisted.signal ?? null,
+      cancelRequested: false,
+      persistedOnly: true,
+    };
+    runs.set(run.id, run);
+    if (TERMINAL_RUN_STATUSES.has(run.status)) scheduleCleanup(run);
+    return run;
+  };
+
+  const hydrateAsync = async (id) => {
+    const persisted = await store?.getRun?.(id);
+    if (!persisted) return null;
+    const persistedEvents = await store?.listRunEventsAfter?.(id, 0) ?? [];
+    return hydrateFromPersisted(persisted, persistedEvents);
+  };
+
+  const get = (id) => runs.get(id) ?? hydrate(id);
+  const getAsync = async (id) => runs.get(id) ?? await hydrateAsync(id);
 
   const scheduleCleanup = (run) => {
     setTimeout(() => {
@@ -48,6 +112,19 @@ export function createChatRunService({
 
   const emit = (run, event, data) => {
     const id = run.nextEventId++;
+    const record = { id, event, data, timestamp: Date.now() };
+    run.events.push(record);
+    if (run.events.length > maxEvents) run.events.splice(0, run.events.length - maxEvents);
+    run.updatedAt = Date.now();
+    persist(() => store?.appendEvent?.(run, record));
+    persist(() => store?.updateRun?.(run));
+    for (const sse of run.clients) sse.send(event, data, id);
+    return record;
+  };
+
+  const deliver = (run, event, data, sourceId = null) => {
+    const id = sourceId ?? run.nextEventId++;
+    if (sourceId != null && sourceId >= run.nextEventId) run.nextEventId = sourceId + 1;
     const record = { id, event, data, timestamp: Date.now() };
     run.events.push(record);
     if (run.events.length > maxEvents) run.events.splice(0, run.events.length - maxEvents);
@@ -75,6 +152,7 @@ export function createChatRunService({
     run.exitCode = code;
     run.signal = signal;
     run.updatedAt = Date.now();
+    persist(() => store?.updateRun?.(run));
     emit(run, 'end', { code, signal, status });
     for (const sse of run.clients) sse.end();
     run.clients.clear();
@@ -112,6 +190,13 @@ export function createChatRunService({
       run.clients.delete(sse);
       sse.cleanup();
     });
+  };
+
+  const streamAsync = async (id, req, res) => {
+    const run = await getAsync(id);
+    if (!run) return null;
+    stream(run, req, res);
+    return run;
   };
 
   const list = ({ projectId, conversationId, status } = {}) => Array.from(runs.values()).filter((run) => {
@@ -204,12 +289,15 @@ export function createChatRunService({
     create,
     start,
     get,
+    getAsync,
     list,
     stream,
+    streamAsync,
     cancel,
     shutdownActive,
     wait,
     emit,
+    deliver,
     finish,
     fail,
     statusBody,

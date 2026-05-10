@@ -34,13 +34,13 @@
 | SET-011 | BYOK 编辑后点击 `Cancel` 或点击遮罩关闭时，不会保存未提交修改 | `SettingsDialog.execution.test.tsx` |
 | SET-012 | Azure OpenAI 页面展示 `Deployment name / API version` 专属字段，并支持保存 Azure 配置 | `SettingsDialog.execution.test.tsx` |
 | SET-013 | BYOK 支持切换到 `Custom model id` 输入路径并保存自定义 model | `SettingsDialog.execution.test.tsx` |
-| SET-014 | Local CLI 模式下只能选择已安装 agent，选择后可保存为当前执行 CLI | `SettingsDialog.execution.test.tsx` |
-| SET-015 | Local CLI 在无 agent 时显示 empty state，且不可保存 | `SettingsDialog.execution.test.tsx` |
+| SET-014 | Pi agent 模式下只能选择可用 agent，选择后可保存为当前执行 agent | `SettingsDialog.execution.test.tsx` |
+| SET-015 | Pi agent 在无 agent 时显示 empty state，且不可保存 | `SettingsDialog.execution.test.tsx` |
 | SET-016 | `Rescan` 会展示 loading 状态、阻止重复点击，并在成功后展示可用 agent 数 | `SettingsDialog.execution.test.tsx` |
 | SET-017 | `Rescan` 失败时会展示错误提示，但不破坏当前页面状态 | `SettingsDialog.execution.test.tsx` |
 | SET-018 | Configure execution 页面里的 `CLAUDE_CONFIG_DIR`、`CODEX_HOME` 可保存进配置 | `SettingsDialog.execution.test.tsx`, `SettingsDialog.test.ts` |
-| SET-019 | daemon offline 时 `Local CLI` 模式不可选，并展示 offline 文案 | `SettingsDialog.execution.test.tsx` |
-| SET-020 | Local CLI 保存后，首页左下角执行状态 pill 会联动展示当前 agent 与版本 | `settings-api-protocol.test.ts` |
+| SET-019 | daemon offline 时 `Pi agent` 模式不可选，并展示 offline 文案 | `SettingsDialog.execution.test.tsx` |
+| SET-020 | Pi agent 保存后，首页左下角执行状态 pill 会联动展示当前 agent 与版本 | `settings-api-protocol.test.ts` |
 | SET-021 | Media providers 会按 `已配置优先 -> Integrated 优先 -> 名称排序` 稳定展示，已配置 provider 会显示 `Configured` badge | `SettingsDialog.execution.test.tsx` |
 | SET-022 | Unsupported media providers 会以禁用行展示，不允许编辑当前不支持的 provider 配置 | `SettingsDialog.execution.test.tsx` |
 | SET-023 | Media providers 支持保存 API key / Base URL / 自定义 model，并在 `Clear` 后从保存 payload 中移除对应 provider | `SettingsDialog.execution.test.tsx` |

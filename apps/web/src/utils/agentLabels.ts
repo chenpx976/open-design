@@ -1,15 +1,6 @@
 const AGENT_LABELS: Record<string, string> = {
-  claude: 'Claude',
-  codex: 'Codex',
-  devin: 'Devin',
-  gemini: 'Gemini',
-  opencode: 'OpenCode',
-  'cursor-agent': 'Cursor',
-  cursor: 'Cursor',
-  qwen: 'Qwen',
-  qoder: 'Qoder',
-  copilot: 'Copilot',
-  deepseek: 'DeepSeek',
+  pi: 'Pi',
+  'pi-sdk': 'Pi',
   'anthropic-api': 'Anthropic API',
   'openai-api': 'OpenAI API',
   'azure-openai-api': 'Azure OpenAI',
@@ -17,17 +8,8 @@ const AGENT_LABELS: Record<string, string> = {
 };
 
 const AGENT_ALIASES: Record<string, string> = {
-  'claude code': 'claude',
-  'codex cli': 'codex',
-  'devin for terminal': 'devin',
-  'gemini cli': 'gemini',
-  'cursor agent': 'cursor-agent',
-  'qwen code': 'qwen',
-  'qoder cli': 'qoder',
-  'qodercli': 'qoder',
-  'github copilot cli': 'copilot',
-  'deepseek tui': 'deepseek',
-  'deepseek-tui': 'deepseek',
+  'pi sdk': 'pi',
+  'node:pi-sdk': 'pi',
 };
 
 export function agentDisplayName(
@@ -69,8 +51,7 @@ function knownAgentLabel(raw: string | null | undefined): string | null {
   const alias = AGENT_ALIASES[key] ?? key;
   const direct = AGENT_LABELS[alias];
   if (direct) return direct;
-  if (key.includes('cursor-agent')) return 'Cursor';
-  if (key.includes('copilot')) return 'Copilot';
+  if (key.includes('pi-sdk')) return 'Pi';
   for (const [agentId, label] of Object.entries(AGENT_LABELS)) {
     if (key.includes(agentId)) return label;
   }

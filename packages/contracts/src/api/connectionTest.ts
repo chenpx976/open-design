@@ -161,6 +161,8 @@ export interface ConnectionTestResponse {
   latencyMs: number;
   // Model id or CLI default slot that this test exercised.
   model?: string;
+  // Concrete provider/model resolved by the embedded agent runtime.
+  resolvedModel?: string;
   // Truncated assistant reply (≤ 120 chars) on success.
   sample?: string;
   // Upstream HTTP status when relevant (provider tests).

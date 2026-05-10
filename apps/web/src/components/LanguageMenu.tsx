@@ -4,7 +4,7 @@ import { Icon } from './Icon';
 
 /**
  * Compact language switcher rendered as a foot-pill in the entry view's
- * lower-left corner. Mirrors the "Local CLI · agent" pill so it doesn't
+ * lower-left corner. Mirrors the "Pi agent · model" pill so it doesn't
  * fight for visual weight, but remains discoverable for first-time users
  * who'd rather not dig into the settings dialog just to swap languages.
  */

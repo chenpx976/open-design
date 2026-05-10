@@ -118,7 +118,7 @@ export function AssistantMessage({
               />
             );
           if (b.kind === "thinking")
-            return <ThinkingBlock key={i} text={b.text} />;
+            return <ThinkingBlock key={i} text={b.text} streaming={streaming} />;
           if (b.kind === "tool-group") {
             return (
               <ToolGroupCard
@@ -558,9 +558,12 @@ function SystemReminderBlock({ text }: { text: string }) {
   );
 }
 
-function ThinkingBlock({ text }: { text: string }) {
+function ThinkingBlock({ text, streaming }: { text: string; streaming?: boolean }) {
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(streaming));
+  useEffect(() => {
+    if (streaming) setOpen(true);
+  }, [streaming]);
   const preview = text.trim().slice(0, 140);
   return (
     <div className="thinking-block">
@@ -614,7 +617,10 @@ function ToolGroupCard({
   onRequestOpenFile?: (name: string) => void;
 }) {
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(runStreaming));
+  useEffect(() => {
+    if (runStreaming) setOpen(true);
+  }, [runStreaming]);
 
   // A run of one tool collapses to that tool's card directly so we don't
   // wrap a single child in a redundant disclosure.

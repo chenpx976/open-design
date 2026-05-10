@@ -347,26 +347,12 @@ export function mergeProviderModelOptions(
   return out;
 }
 
-const AGENT_CLI_ENV_FIELDS = [
-  {
-    agentId: 'claude',
-    envKey: 'CLAUDE_CONFIG_DIR',
-    labelKey: 'settings.cliEnvClaudeConfigDir',
-    placeholder: '~/.claude-2',
-  },
-  {
-    agentId: 'codex',
-    envKey: 'CODEX_HOME',
-    labelKey: 'settings.cliEnvCodexHome',
-    placeholder: '~/.codex-alt',
-  },
-  {
-    agentId: 'codex',
-    envKey: 'CODEX_BIN',
-    labelKey: 'settings.cliEnvCodexBin',
-    placeholder: '/absolute/path/to/codex',
-  },
-] as const;
+const AGENT_CLI_ENV_FIELDS: ReadonlyArray<{
+  agentId: string;
+  envKey: string;
+  labelKey: keyof Dict;
+  placeholder: string;
+}> = [];
 
 function defaultApiProtocolConfig(protocol: ApiProtocol): ApiProtocolConfig {
   const provider = KNOWN_PROVIDERS.find((p) => p.protocol === protocol);
@@ -544,7 +530,7 @@ function apiModelOptionLabel(model: ProviderModelOption): string {
  * currently active sidebar section.
  *
  * The mode-completeness check (BYOK requires apiKey + model + valid baseUrl;
- * Local CLI requires a selected available agent) is only meaningful on the
+ * Pi agent mode requires a selected available agent) is only meaningful on the
  * execution-mode section, where the user is actively editing those fields.
  * On every other sidebar section (language, appearance, composio, media,
  * integrations, notifications, pet, library, about), partial state from a
@@ -1033,10 +1019,15 @@ export function SettingsDialog({
     const sample = result.sample ?? '';
     const agentName = result.agentName ?? '';
     const testedModel = result.model ?? cfg.model;
+    const resolvedModel = result.resolvedModel?.trim();
+    const resolvedModelSuffix = resolvedModel
+      ? ` · model: ${resolvedModel}`
+      : '';
     if (result.ok) {
-      return kindForSuccess === 'api'
+      const message = kindForSuccess === 'api'
         ? t('settings.testSuccessApi', { ms, sample })
         : t('settings.testSuccessCli', { agentName, ms, sample });
+      return `${message}${resolvedModelSuffix}`;
     }
     switch (result.kind) {
       case 'auth_failed':
@@ -1953,35 +1944,37 @@ export function SettingsDialog({
                   </div>
                 );
               })()}
-              <div className="agent-cli-env">
-                <div className="agent-cli-env-head">
-                  <h4>{t('settings.cliEnvTitle')}</h4>
-                  <p className="hint">{t('settings.cliEnvHint')}</p>
+              {AGENT_CLI_ENV_FIELDS.length > 0 ? (
+                <div className="agent-cli-env">
+                  <div className="agent-cli-env-head">
+                    <h4>{t('settings.cliEnvTitle')}</h4>
+                    <p className="hint">{t('settings.cliEnvHint')}</p>
+                  </div>
+                  <div className="agent-cli-env-grid">
+                    {AGENT_CLI_ENV_FIELDS.map((field) => (
+                      <label className="field" key={`${field.agentId}:${field.envKey}`}>
+                        <span className="field-label">{t(field.labelKey)}</span>
+                        <input
+                          type="text"
+                          value={cfg.agentCliEnv?.[field.agentId]?.[field.envKey] ?? ''}
+                          placeholder={field.placeholder}
+                          spellCheck={false}
+                          onChange={(e) =>
+                            setCfg((c) =>
+                              updateAgentCliEnvValue(
+                                c,
+                                field.agentId,
+                                field.envKey,
+                                e.target.value,
+                              ),
+                            )
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <div className="agent-cli-env-grid">
-                  {AGENT_CLI_ENV_FIELDS.map((field) => (
-                    <label className="field" key={`${field.agentId}:${field.envKey}`}>
-                      <span className="field-label">{t(field.labelKey)}</span>
-                      <input
-                        type="text"
-                        value={cfg.agentCliEnv?.[field.agentId]?.[field.envKey] ?? ''}
-                        placeholder={field.placeholder}
-                        spellCheck={false}
-                        onChange={(e) =>
-                          setCfg((c) =>
-                            updateAgentCliEnvValue(
-                              c,
-                              field.agentId,
-                              field.envKey,
-                              e.target.value,
-                            ),
-                          )
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
+              ) : null}
             </section>
           ) : (
             <section className="settings-section">

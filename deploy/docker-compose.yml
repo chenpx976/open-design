@@ -13,6 +13,12 @@ services:
       NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=192}
       OD_BIND_HOST: 0.0.0.0
       OD_ALLOWED_ORIGINS: ${OPEN_DESIGN_ALLOWED_ORIGINS:-}
+      OD_AGENT_RUNTIME: ${OPEN_DESIGN_AGENT_RUNTIME:-inline}
+      OD_AGENT_RUN_STORE: ${OPEN_DESIGN_AGENT_RUN_STORE:-sqlite}
+      OD_AGENT_POSTGRES_URL: ${OPEN_DESIGN_AGENT_POSTGRES_URL:-postgres://open_design:open_design@postgres:5432/open_design}
+      OD_AGENT_JOB_QUEUE: ${OPEN_DESIGN_AGENT_JOB_QUEUE:-sqlite}
+      OD_AGENT_REDIS_URL: ${OPEN_DESIGN_AGENT_REDIS_URL:-redis://redis:6379/0}
+      OD_DATA_DIR: /app/.od
       OD_PORT: 7456
       OD_WEB_PORT: ${OPEN_DESIGN_PORT:-7456}
     ports:
@@ -39,5 +45,84 @@ services:
       retries: 3
       start_period: 20s
 
+  agent-worker:
+    profiles:
+      - worker
+    image: ${OPEN_DESIGN_IMAGE:-docker.io/vanjayak/open-design:latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: always
+    command: ["node", "apps/daemon/dist/cli.js", "agent-worker"]
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=192}
+      OD_DATA_DIR: /app/.od
+      OD_AGENT_RUN_STORE: ${OPEN_DESIGN_AGENT_RUN_STORE:-sqlite}
+      OD_AGENT_POSTGRES_URL: ${OPEN_DESIGN_AGENT_POSTGRES_URL:-postgres://open_design:open_design@postgres:5432/open_design}
+      OD_AGENT_JOB_QUEUE: ${OPEN_DESIGN_AGENT_JOB_QUEUE:-sqlite}
+      OD_AGENT_REDIS_URL: ${OPEN_DESIGN_AGENT_REDIS_URL:-redis://redis:6379/0}
+      OD_AGENT_WORKER_MAX_ATTEMPTS: ${OPEN_DESIGN_AGENT_WORKER_MAX_ATTEMPTS:-3}
+      OD_AGENT_WORKER_LEASE_MS: ${OPEN_DESIGN_AGENT_WORKER_LEASE_MS:-120000}
+      OD_AGENT_WORKER_HEARTBEAT_MS: ${OPEN_DESIGN_AGENT_WORKER_HEARTBEAT_MS:-30000}
+      OD_AGENT_WORKER_MAX_JOB_MS: ${OPEN_DESIGN_AGENT_WORKER_MAX_JOB_MS:-900000}
+    volumes:
+      - open_design_data:/app/.od
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${OPEN_DESIGN_WORKER_MEM_LIMIT:-768m}
+    pids_limit: 256
+
+  redis:
+    profiles:
+      - worker
+    image: redis:7-alpine
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - open_design_redis:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${OPEN_DESIGN_REDIS_MEM_LIMIT:-128m}
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    profiles:
+      - worker
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${OPEN_DESIGN_POSTGRES_USER:-open_design}
+      POSTGRES_PASSWORD: ${OPEN_DESIGN_POSTGRES_PASSWORD:-open_design}
+      POSTGRES_DB: ${OPEN_DESIGN_POSTGRES_DB:-open_design}
+    volumes:
+      - open_design_postgres:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${OPEN_DESIGN_POSTGRES_MEM_LIMIT:-256m}
+    pids_limit: 128
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${OPEN_DESIGN_POSTGRES_USER:-open_design} -d ${OPEN_DESIGN_POSTGRES_DB:-open_design}"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
   open_design_data:
+  open_design_redis:
+  open_design_postgres:

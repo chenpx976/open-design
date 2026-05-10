@@ -49,7 +49,7 @@ interface Props {
   onRemoveCommentAttachment?: (id: string) => void;
   onSend: (prompt: string, attachments: ChatAttachment[], commentAttachments: ChatCommentAttachment[], meta?: ChatSendMeta) => void;
   onStop: () => void;
-  // Opens the global settings dialog (CLI / model / agent picker). The
+  // Opens the global settings dialog (Pi agent / model picker). The
   // composer's leading gear icon routes here so users can switch models
   // without leaving the chat.
   onOpenSettings?: () => void;

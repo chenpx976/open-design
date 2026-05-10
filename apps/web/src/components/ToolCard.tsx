@@ -8,7 +8,7 @@
  *      Edit / Read / Bash / Glob / Grep / WebFetch / WebSearch)
  *   3. generic command/output fallback
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useT } from '../i18n';
 import { parseTodoWriteInput } from '../runtime/todos';
 import { getToolRenderer, toRenderProps } from '../runtime/tool-renderers';
@@ -53,18 +53,19 @@ export function ToolCard({
     }
   }
   const ctx: FileToolCtx = { projectFileNames, onRequestOpenFile };
-  if (name === 'TodoWrite' || name === 'todowrite') return <TodoCard input={use.input} />;
-  if (name === 'Write' || name === 'create_file')
+  const lowerName = name.toLowerCase();
+  if (name === 'TodoWrite' || lowerName === 'todowrite') return <TodoCard input={use.input} />;
+  if (name === 'Write' || lowerName === 'write' || name === 'create_file')
     return <FileWriteCard input={use.input} result={result} ctx={ctx} />;
-  if (name === 'Edit' || name === 'str_replace_edit')
+  if (name === 'Edit' || lowerName === 'edit' || name === 'str_replace_edit')
     return <FileEditCard input={use.input} result={result} ctx={ctx} />;
-  if (name === 'Read' || name === 'read_file')
-    return <FileReadCard input={use.input} result={result} ctx={ctx} />;
-  if (name === 'Bash') return <BashCard input={use.input} result={result} />;
-  if (name === 'Glob' || name === 'list_files') return <GlobCard input={use.input} result={result} />;
-  if (name === 'Grep') return <GrepCard input={use.input} result={result} />;
-  if (name === 'WebFetch' || name === 'web_fetch') return <WebFetchCard input={use.input} />;
-  if (name === 'WebSearch' || name === 'web_search') return <WebSearchCard input={use.input} />;
+  if (name === 'Read' || lowerName === 'read' || name === 'read_file')
+    return <FileReadCard input={use.input} result={result} ctx={ctx} runStreaming={runStreaming} />;
+  if (name === 'Bash' || lowerName === 'bash') return <BashCard input={use.input} result={result} runStreaming={runStreaming} />;
+  if (name === 'Glob' || lowerName === 'glob' || name === 'list_files') return <GlobCard input={use.input} result={result} runStreaming={runStreaming} />;
+  if (name === 'Grep' || lowerName === 'grep') return <GrepCard input={use.input} result={result} runStreaming={runStreaming} />;
+  if (name === 'WebFetch' || name === 'web_fetch' || lowerName === 'webfetch') return <WebFetchCard input={use.input} />;
+  if (name === 'WebSearch' || name === 'web_search' || lowerName === 'websearch') return <WebSearchCard input={use.input} />;
   return <GenericCard name={name} input={use.input} result={result} />;
 }
 
@@ -192,14 +193,20 @@ function FileReadCard({
   input,
   result,
   ctx,
+  runStreaming,
 }: {
   input: unknown;
   result?: Props['result'];
   ctx: FileToolCtx;
+  runStreaming?: boolean;
 }) {
   const t = useT();
   const obj = (input ?? {}) as { file_path?: string; path?: string };
   const file = obj.file_path ?? obj.path ?? '(unnamed)';
+  const [open, setOpen] = useState(Boolean(runStreaming && result?.content));
+  useEffect(() => {
+    if (runStreaming && result?.content) setOpen(true);
+  }, [result?.content, runStreaming]);
   return (
     <div className="op-card op-file">
       <div className="op-card-head">
@@ -208,17 +215,28 @@ function FileReadCard({
         <code className="op-path">{file}</code>
         <ResultBadge result={result} />
         <OpenInTabButton filePath={file} ctx={ctx} />
+        {result?.content ? (
+          <button className="op-toggle" onClick={() => setOpen((o) => !o)}>
+            {open ? t('tool.hide') : t('tool.output')}
+          </button>
+        ) : null}
       </div>
+      {open && result?.content ? (
+        <pre className="op-output">{truncate(result.content, 4000)}</pre>
+      ) : null}
     </div>
   );
 }
 
-function BashCard({ input, result }: { input: unknown; result?: Props['result'] }) {
+function BashCard({ input, result, runStreaming }: { input: unknown; result?: Props['result']; runStreaming?: boolean }) {
   const t = useT();
   const obj = (input ?? {}) as { command?: string; description?: string };
   const command = obj.command ?? '';
   const desc = obj.description;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(runStreaming && result?.content));
+  useEffect(() => {
+    if (runStreaming && result?.content) setOpen(true);
+  }, [result?.content, runStreaming]);
   return (
     <div className="op-card op-bash">
       <div className="op-card-head">
@@ -240,9 +258,13 @@ function BashCard({ input, result }: { input: unknown; result?: Props['result'] 
   );
 }
 
-function GlobCard({ input, result }: { input: unknown; result?: Props['result'] }) {
+function GlobCard({ input, result, runStreaming }: { input: unknown; result?: Props['result']; runStreaming?: boolean }) {
   const t = useT();
   const obj = (input ?? {}) as { pattern?: string; path?: string };
+  const [open, setOpen] = useState(Boolean(runStreaming && result?.content));
+  useEffect(() => {
+    if (runStreaming && result?.content) setOpen(true);
+  }, [result?.content, runStreaming]);
   return (
     <div className="op-card op-search">
       <div className="op-card-head">
@@ -253,14 +275,26 @@ function GlobCard({ input, result }: { input: unknown; result?: Props['result'] 
           <span className="op-meta">{t('tool.in', { path: obj.path })}</span>
         ) : null}
         <ResultBadge result={result} />
+        {result?.content ? (
+          <button className="op-toggle" onClick={() => setOpen((o) => !o)}>
+            {open ? t('tool.hide') : t('tool.output')}
+          </button>
+        ) : null}
       </div>
+      {open && result?.content ? (
+        <pre className="op-output">{truncate(result.content, 4000)}</pre>
+      ) : null}
     </div>
   );
 }
 
-function GrepCard({ input, result }: { input: unknown; result?: Props['result'] }) {
+function GrepCard({ input, result, runStreaming }: { input: unknown; result?: Props['result']; runStreaming?: boolean }) {
   const t = useT();
   const obj = (input ?? {}) as { pattern?: string; path?: string; glob?: string };
+  const [open, setOpen] = useState(Boolean(runStreaming && result?.content));
+  useEffect(() => {
+    if (runStreaming && result?.content) setOpen(true);
+  }, [result?.content, runStreaming]);
   return (
     <div className="op-card op-search">
       <div className="op-card-head">
@@ -271,7 +305,15 @@ function GrepCard({ input, result }: { input: unknown; result?: Props['result'] 
           <span className="op-meta">{t('tool.in', { path: obj.path })}</span>
         ) : null}
         <ResultBadge result={result} />
+        {result?.content ? (
+          <button className="op-toggle" onClick={() => setOpen((o) => !o)}>
+            {open ? t('tool.hide') : t('tool.output')}
+          </button>
+        ) : null}
       </div>
+      {open && result?.content ? (
+        <pre className="op-output">{truncate(result.content, 4000)}</pre>
+      ) : null}
     </div>
   );
 }

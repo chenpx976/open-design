@@ -12,11 +12,10 @@
  * picks it up automatically, and the agent only narrates what it did
  * and references the returned filename.
  *
- * The contract is intentionally tool-name-agnostic: it works on any
- * code-agent CLI that has shell access (Claude Code's Bash, Codex's
- * shell, Gemini's exec, OpenCode, Cursor Agent, Qwen — all of them).
- * That's why we keep it as text-driven shell calls rather than custom
- * tool definitions.
+ * The contract is intentionally tool-name-agnostic: Pi exposes shell
+ * execution to the embedded agent session, so we keep media generation as
+ * text-driven shell calls rather than binding it to a custom daemon-only
+ * tool shape.
  */
 import {
   AUDIO_MODELS_BY_KIND,
@@ -73,7 +72,7 @@ directly in the project dir doesn't have to relaunch.
 
 ### Invocation
 
-Run via your shell tool (Bash on Claude Code, exec on Codex/Gemini, etc.):
+Run via your shell tool:
 
 \`\`\`bash
 "$OD_NODE_BIN" "$OD_BIN" media generate \\

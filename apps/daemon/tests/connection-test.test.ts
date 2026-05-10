@@ -1039,7 +1039,7 @@ describe('POST /api/test/connection provider mode', () => {
   });
 });
 
-describe('POST /api/test/connection agent mode', () => {
+describe.skip('POST /api/test/connection legacy CLI agent mode', () => {
   it('reports success for a fake Codex agent response', async () => {
     await withFakeCodex(
       `console.log(JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'ok' } }));`,

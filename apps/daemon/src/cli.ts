@@ -1,13 +1,26 @@
 #!/usr/bin/env node
 // @ts-nocheck
 import { startServer } from './server.js';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { runLiveArtifactsMcpServer } from './mcp-live-artifacts-server.js';
 import { runConnectorsToolCli } from './tools-connectors-cli.js';
 import { runLiveArtifactsToolCli } from './tools-live-artifacts-cli.js';
 import { splitResearchSubcommand } from './research/cli-args.js';
 import { openBrowser } from './browser-open.js';
+import { runAgentWorker } from './agent-worker.js';
 
 const argv = process.argv.slice(2);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function resolveProjectRoot(moduleDir) {
+  const base = path.basename(moduleDir);
+  const daemonDir =
+    base === 'dist' || base === 'src' ? path.dirname(moduleDir) : moduleDir;
+  return path.resolve(daemonDir, '../..');
+}
 
 // ---- Subcommand router ----------------------------------------------------
 //
@@ -74,6 +87,7 @@ const SUBCOMMAND_MAP = {
   media: runMedia,
   mcp: runMcp,
   research: runResearch,
+  'agent-worker': runWorker,
 };
 
 if (argv[0] === 'mcp' && argv[1] === 'live-artifacts') {
@@ -196,6 +210,9 @@ function printRootHelp() {
   od research search --query <text> [--max-sources 5] [--daemon-url <url>]
       Run agent-callable Tavily research through the local daemon.
 
+  od agent-worker [--idle-exit-ms <n>]
+      Consume queued Pi agent jobs from the daemon data store.
+
   "$OD_NODE_BIN" "$OD_BIN" tools ...
       Recommended agent-runtime form; avoids relying on user PATH for od or node.
 
@@ -219,11 +236,29 @@ Options:
   --no-open        Do not open the browser after start.
 
 What the daemon does:
-  * scans PATH for installed code-agent CLIs (claude, codex, devin, gemini, opencode, cursor-agent, ...)
+  * hosts an embedded Pi coding-agent session inside the Node.js daemon
   * serves the chat UI at http://<host>:<port>
-  * proxies messages (text + images) to the selected agent via child-process spawn
+  * streams messages (text + images) through the Pi SDK event API
   * exposes /api/projects/:id/media/generate — the unified image/video/audio
      dispatcher that the agent calls via \`od media generate\`.`);
+}
+
+async function runWorker(args) {
+  let idleExitMs = Number(process.env.OD_AGENT_WORKER_IDLE_EXIT_MS) || 0;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--idle-exit-ms') {
+      idleExitMs = Number(args[++i]) || 0;
+    } else if (a === '-h' || a === '--help') {
+      console.log('Usage: od agent-worker [--idle-exit-ms <n>]');
+      return;
+    }
+  }
+  const result = await runAgentWorker({
+    idleExitMs,
+    projectRoot: resolveProjectRoot(__dirname),
+  });
+  console.error(`[od] agent-worker stopped ${JSON.stringify(result)}`);
 }
 
 // ---------------------------------------------------------------------------

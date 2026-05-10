@@ -83,7 +83,7 @@ interface Props {
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onRenameConversation?: (id: string, title: string) => void;
-  // Composer settings/CLI button forwards to here. The dialog lives in App
+  // Composer Pi/model settings button forwards to here. The dialog lives in App
   // (it owns the AppConfig lifecycle) so we just pass the open trigger.
   onOpenSettings?: () => void;
   // Same dialog, but landing on the External MCP tab. Forwarded to the
