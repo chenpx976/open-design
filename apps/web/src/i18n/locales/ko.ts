@@ -86,7 +86,7 @@ export const ko: Dict = {
   'settings.testUnknown': '테스트 실패: {detail}',
   'settings.agentInstall.install': '설치',
   'settings.agentInstall.docs': '문서',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
+  'settings.agentInstall.pathHint': 'The daemon runs Pi through its SDK; configure model access here.',
   'settings.agentInstall.stepOpenLinks': '원하는 에이전트 카드에서 설치 또는 문서 링크를 여세요.',
   'settings.agentInstall.stepAuth':
     'Open Design으로 돌아오기 전에 공급자 CLI에서 인증(로그인 또는 API 자격 증명 추가)을 완료하세요.',

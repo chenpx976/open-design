@@ -5011,9 +5011,9 @@ export async function startServer({
       metadata?.kind === 'image' ||
       metadata?.kind === 'video' ||
       metadata?.kind === 'audio';
-    // The old critique orchestrator consumed plain stdout from CLI adapters.
-    // Pi SDK runs through structured events, so critique stays disabled until
-    // it is ported to the Pi runtime contract.
+    // The old critique orchestrator consumed plain stdout. Pi SDK runs through
+    // structured events, so critique stays disabled until it is ported to the
+    // Pi runtime contract.
     const critiqueShouldRun = false
       && critiqueCfg.enabled
       && critiqueBrand !== undefined

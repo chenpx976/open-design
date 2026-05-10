@@ -84,7 +84,7 @@ export const zhCN: Dict = {
   'settings.testUnknown': '测试失败：{detail}',
   'settings.agentInstall.install': '安装',
   'settings.agentInstall.docs': '文档',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
+  'settings.agentInstall.pathHint': 'The daemon runs Pi through its SDK; configure model access here.',
   'settings.agentInstall.stepOpenLinks': '如果需要配置凭据，请打开 Pi runtime 文档。',
   'settings.agentInstall.stepAuth':
     '返回 Open Design 之前，请通过 ~/.pi/agent、Pi OAuth 或提供商环境变量配置 Pi 凭据。',

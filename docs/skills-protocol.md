@@ -274,7 +274,7 @@ The skill is unchanged. Here's the full path:
    - `design_system.requires`: false (skill body doesn't mention DESIGN.md).
 3. User switches to `deck` mode in the web UI; skill appears in the skill picker.
 4. User types "给我做一份杂志风 8 页投资人 PPT".
-5. Daemon dispatches to active agent (Claude Code) with:
+5. Daemon dispatches to the embedded Pi runtime with:
    - system message: skill's `SKILL.md` body
    - cwd: `./.od/artifacts/2026-04-24-pitch-deck/`
    - files already placed in cwd: `template.html` (from skill's `assets/`)

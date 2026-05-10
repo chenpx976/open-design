@@ -9,7 +9,7 @@ Run the full product locally.
 - **Node.js:** `~24` (Node 24.x). The repo enforces this through `package.json#engines`.
 - **pnpm:** `10.33.x`. The repo pins `pnpm@10.33.2` through `packageManager`; use Corepack so the pinned version is selected automatically.
 - **OS:** macOS, Linux, and WSL2 are the primary paths. Windows native should work for most flows, but WSL2 is the safer baseline.
-- **Agent runtime:** Open Design embeds Pi through the Node.js daemon. No separate local agent binary or PATH setup is required.
+- **Agent runtime:** Open Design embeds Pi through the Node.js daemon; configure model access in Settings.
 
 ### Pi SDK runtime
 

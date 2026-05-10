@@ -86,7 +86,7 @@ export const zhTW: Dict = {
   'settings.testUnknown': '測試失敗：{detail}',
   'settings.agentInstall.install': '安裝',
   'settings.agentInstall.docs': '文件',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
+  'settings.agentInstall.pathHint': 'The daemon runs Pi through its SDK; configure model access here.',
   'settings.agentInstall.stepOpenLinks': '在目標代理卡片上開啟「安裝」或「文件」連結。',
   'settings.agentInstall.stepAuth':
     '返回 Open Design 前，請先在對應 CLI 完成驗證（登入或新增 API 憑證）。',

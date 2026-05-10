@@ -57,7 +57,7 @@ browser ──► od.yourdomain.com (Vercel serverless)
               Anthropic Messages API (BYOK stored in browser)
 ```
 
-No local CLI, no daemon. Degraded experience — no Claude Code skills, no filesystem artifacts (stored in IndexedDB), no PPTX export. But it's the "just try it" path. Keys stored `localStorage` with explicit warning.
+No daemon. Degraded experience — no filesystem-backed Pi runtime, no filesystem artifacts (stored in IndexedDB), no PPTX export. But it's the "just try it" path. Keys stored `localStorage` with explicit warning.
 
 The three topologies share the same web bundle; the difference is which transports are enabled.
 
@@ -216,11 +216,9 @@ Rationale:
 6. User comments on an element → web sends { method: "session.refine", params: {
         sessionId, artifactId, elementId, note }}
 
-7. Daemon re-invokes agent with surgical-edit instruction + the note.
-   Adapter translates based on capabilities:
-     - Claude Code → native tool loop, edits that region only
-     - Codex → regenerates the file with "only change element X" constraint
-     - API fallback → same as Codex path
+7. Daemon re-invokes the embedded Pi runtime with a surgical-edit instruction
+   plus the note. The runtime keeps the project filesystem boundary in
+   `ProjectFs` and emits the same thinking/tool/result stream as a first turn.
 ```
 
 ## 5. Preview renderer
@@ -339,9 +337,9 @@ vercel deploy                     # same bundle
 |---|---|---|
 | Daemon HTTP/SSE API | Arbitrary local process talks to daemon | Bind to localhost by default; add auth/tunnel hardening before exposing beyond the machine |
 | Artifact code in preview | XSS/cookie theft from host | `<iframe sandbox="allow-scripts">`, no `allow-same-origin` |
-| Agent running on user's machine | Agent reads/writes outside project | Adapter sets `cwd` to artifact dir; relies on agent's own permission system (Claude Code's `--allowed-tools` etc.) |
+| Embedded Pi runtime | Agent reads/writes outside project | Daemon passes a volume-backed local `ProjectFs`; Pi file tools and `just-bash` are rooted to the project directory |
 | User secrets | Leak to cloud | BYOK stored only in daemon's `config.toml` (mode 0600) or browser `localStorage` in Topology C, never sent to OD's own servers (we don't have any) |
-| Skill from untrusted source | Malicious skill in `~/.claude/skills/` | Install-time warning; skills run under the agent's permission model, not ours |
+| Skill from untrusted source | Malicious skill instructions | Install-time warning; skills run inside the embedded runtime's project-scoped tool boundary |
 | Vercel web bundle | Compromised build | Standard Vercel integrity; bundle has zero secrets |
 
 The daemon owns the filesystem boundary for the embedded agent: project writes go through `ProjectFs`, and shell access is backed by `just-bash` with a root restricted to the project directory.

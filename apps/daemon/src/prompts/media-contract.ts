@@ -117,12 +117,11 @@ first.
 #### Carve-out: \`hyperframes-html\` is agent-authored, daemon-rendered
 
 The composition HTML is your job; the render itself runs in the
-daemon process, not your shell. Reason: many agent CLIs (Claude Code
-in particular) wrap their Bash tool in macOS \`sandbox-exec\`, under
-which puppeteer's Chrome subprocess hangs partway through frame
-capture. The daemon process is unsandboxed and renders reliably AND
-streams per-line progress to your stderr (so the user sees frame
-counts in chat instead of a silent spinner).
+daemon process, not your shell. Reason: browser/video rendering needs
+daemon-owned process control rather than the project-scoped shell
+runtime. The daemon process renders reliably AND streams per-line
+progress to your stderr (so the user sees frame counts in chat instead
+of a silent spinner).
 
 **Default recipe — use \`hyperframes init\`, don't write from scratch.**
 For most OD requests ("test video", "5s product reveal", "demo clip"),

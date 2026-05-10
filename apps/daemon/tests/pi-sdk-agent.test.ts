@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -7,8 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockState = vi.hoisted(() => ({
   createAgentSessionCalls: [] as any[],
   subscribers: [] as Array<(event: any) => void>,
+  promptCalls: [] as any[],
+  readWriteFsRoots: [] as string[],
+  bashExecCalls: [] as any[],
   abortCalls: 0,
-  promptImpl: null as null | ((prompt: string) => Promise<void>),
+  promptImpl: null as null | ((prompt: string, options?: unknown) => Promise<void>),
   sessionModel: { provider: 'openai', id: 'gpt-5.5' },
 }));
 
@@ -35,8 +38,10 @@ vi.mock('@earendil-works/pi-coding-agent', () => {
           mockState.subscribers.push(fn);
           return () => {};
         },
-        prompt: (prompt: string) =>
-          mockState.promptImpl ? mockState.promptImpl(prompt) : Promise.resolve(),
+        prompt: (prompt: string, options?: unknown) => {
+          mockState.promptCalls.push({ prompt, options });
+          return mockState.promptImpl ? mockState.promptImpl(prompt, options) : Promise.resolve();
+        },
         abort: async () => {
           mockState.abortCalls += 1;
         },
@@ -57,10 +62,12 @@ vi.mock('just-bash', () => ({
     root: string;
     constructor(options: { root: string }) {
       this.root = options.root;
+      mockState.readWriteFsRoots.push(options.root);
     }
   },
   Bash: class {
-    async exec() {
+    async exec(command: string, options: unknown) {
+      mockState.bashExecCalls.push({ command, options });
       return { stdout: '', stderr: '', exitCode: 0 };
     }
   },
@@ -73,6 +80,9 @@ describe('runPiSdkAgent contract', () => {
     cwd = await mkdtemp(path.join(tmpdir(), 'od-pi-sdk-test-'));
     mockState.createAgentSessionCalls.length = 0;
     mockState.subscribers.length = 0;
+    mockState.promptCalls.length = 0;
+    mockState.readWriteFsRoots.length = 0;
+    mockState.bashExecCalls.length = 0;
     mockState.abortCalls = 0;
     mockState.promptImpl = null;
     mockState.sessionModel = { provider: 'openai', id: 'gpt-5.5' };
@@ -170,5 +180,103 @@ describe('runPiSdkAgent contract', () => {
         isError: true,
       },
     });
+  });
+
+  it('does not write escaped absolute targets outside the local ProjectFs root', async () => {
+    const { runPiSdkAgent } = await import('../src/pi-sdk-agent.js');
+
+    await runPiSdkAgent({
+      cwd,
+      prompt: 'write',
+      model: 'default',
+      reasoning: 'default',
+      signal: undefined,
+      send: () => {},
+    });
+
+    const call = mockState.createAgentSessionCalls[0];
+    const writeTool = call.customTools.find((tool: any) => tool.name === 'write');
+    expect(writeTool).toBeTruthy();
+
+    const outsidePath = path.join(path.dirname(cwd), 'outside.txt');
+    await rm(outsidePath, { force: true });
+
+    await writeTool.def.operations.writeFile(path.join(cwd, 'inside.txt'), 'ok');
+    await expect(writeTool.def.operations.writeFile(outsidePath, 'nope')).rejects.toThrow();
+    await expect(access(outsidePath)).rejects.toThrow();
+  });
+
+  it('binds just-bash to the local ProjectFs root and normalizes escaped cwd', async () => {
+    const { runPiSdkAgent } = await import('../src/pi-sdk-agent.js');
+
+    await runPiSdkAgent({
+      cwd,
+      prompt: 'bash',
+      model: 'default',
+      reasoning: 'default',
+      signal: undefined,
+      send: () => {},
+    });
+
+    expect(mockState.readWriteFsRoots).toEqual([cwd]);
+
+    const call = mockState.createAgentSessionCalls[0];
+    const bashTool = call.customTools.find((tool: any) => tool.name === 'bash');
+    expect(bashTool).toBeTruthy();
+
+    await bashTool.def.operations.exec('pwd', path.join(path.dirname(cwd), 'outside'), {
+      env: { USER: 'tester' },
+    });
+
+    expect(mockState.bashExecCalls[0]).toMatchObject({
+      command: 'pwd',
+      options: {
+        cwd: '/',
+        env: {
+          HOME: '/',
+          OD_PROJECT_DIR: '/',
+          OLDPWD: '/',
+          PWD: '/',
+          USER: 'tester',
+        },
+      },
+    });
+  });
+
+  it('passes only uploadRoot-contained image inputs to Pi', async () => {
+    const { runPiSdkAgent } = await import('../src/pi-sdk-agent.js');
+    const uploadRoot = await mkdtemp(path.join(tmpdir(), 'od-pi-upload-'));
+    const insideImage = path.join(uploadRoot, 'inside.png');
+    const outsideImage = path.join(cwd, 'outside.png');
+    const textFile = path.join(uploadRoot, 'note.txt');
+    await mkdir(uploadRoot, { recursive: true });
+    await writeFile(insideImage, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    await writeFile(outsideImage, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    await writeFile(textFile, 'not an image', 'utf8');
+
+    try {
+      await (runPiSdkAgent as any)({
+        cwd,
+        prompt: 'image',
+        model: 'default',
+        reasoning: 'default',
+        imagePaths: [insideImage, outsideImage, textFile],
+        uploadRoot,
+        signal: undefined,
+        send: () => {},
+      });
+
+      const options = mockState.promptCalls[0]?.options as any;
+      expect(options?.images).toHaveLength(1);
+      expect(options.images[0]).toMatchObject({
+        type: 'image',
+        source: {
+          type: 'base64',
+          mediaType: 'image/png',
+        },
+      });
+    } finally {
+      await rm(uploadRoot, { recursive: true, force: true });
+    }
   });
 });

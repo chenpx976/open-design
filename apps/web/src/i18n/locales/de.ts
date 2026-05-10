@@ -86,7 +86,7 @@ export const de: Dict = {
   'settings.testUnknown': 'Test fehlgeschlagen: {detail}',
   'settings.agentInstall.install': 'Installieren',
   'settings.agentInstall.docs': 'Doku',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
+  'settings.agentInstall.pathHint': 'The daemon runs Pi through its SDK; configure model access here.',
   'settings.agentInstall.stepOpenLinks': 'Oeffnen Sie Installieren oder Doku fuer den gewuenschten Agenten.',
   'settings.agentInstall.stepAuth':
     'Authentifizieren Sie sich mit der Anbieter-CLI (anmelden oder API-Zugangsdaten setzen), bevor Sie zu Open Design zurueckkehren.',

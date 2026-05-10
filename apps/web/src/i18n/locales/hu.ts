@@ -86,7 +86,7 @@ export const hu: Dict = {
   'settings.testUnknown': 'Sikertelen teszt: {detail}',
   'settings.agentInstall.install': 'Telepítés',
   'settings.agentInstall.docs': 'Dokumentáció',
-  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no separate local agent binary is required.',
+  'settings.agentInstall.pathHint': 'The daemon runs Pi through its SDK; configure model access here.',
   'settings.agentInstall.stepOpenLinks': 'Nyisd meg a Telepítés vagy Dokumentáció hivatkozást a kívánt ügynöknél.',
   'settings.agentInstall.stepAuth':
     'Hitelesíts a szolgáltató CLI-jében (bejelentkezés vagy API hitelesítő adatok megadása), mielőtt visszatérsz az Open Designhoz.',

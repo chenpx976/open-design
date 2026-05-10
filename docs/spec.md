@@ -106,7 +106,7 @@ Module responsibilities:
 We seriously considered it. The concrete blockers:
 
 1. **It's Electron.** Porting to a web architecture requires ripping out ~40% of the code and rewriting the renderer/main IPC layer. At that point it's a rewrite.
-2. **It owns the agent loop.** [`pi-ai`][piai] is a perfectly fine provider abstraction, but it means every skill is written against `pi-ai`'s tool-use format — not against whatever Claude Code, Codex, or Cursor Agent natively speak. We can't reuse existing skills, and existing skills can't reuse us.
+2. **It owns the agent loop and skill surface.** [`pi-ai`][piai] is a useful provider abstraction, but Open CoDesign couples skills to its own compiled module format. OD keeps the agent loop in the Node.js daemon and lets file-based `SKILL.md` skills drive the embedded Pi coding runtime.
 3. **Skill format is proprietary.** Its 12 skills are TypeScript modules compiled into the app. A user cannot drop [`guizang-ppt-skill`][guizang] in and have it work; there's no `SKILL.md` loader.
 4. **No design system abstraction.** Design tokens live in prompts, not in a versioned file that can be shared across projects.
 
@@ -117,7 +117,7 @@ We keep the good parts: comment mode, slider-emitted parameters, multi-frame pre
 We are **not** trying to out-feature [Claude Design][cd]. Claude Design has Anthropic's model team, internal tooling, and a rendering pipeline we can't match. What we offer instead:
 
 - **Self-hostable.** Run on your laptop, your Vercel, your k8s. Secrets never leave.
-- **BYO-agent.** If you're already paying for Cursor, that's your agent. If you've standardized on Codex inside your company, use Codex. No mandatory Anthropic subscription.
+- **BYOK runtime.** The daemon hosts the Pi SDK coding runtime and lets teams choose their provider/model credentials explicitly. No mandatory Anthropic subscription.
 - **Skills as files.** Version them in git. Fork them. Ship them to teammates as a repo. Run your team's branded deck skill without rebuilding a product.
 - **Design systems as files.** A `DESIGN.md` is an artifact you can review in a PR. Claude Design's "design system" lives in an ephemeral chat.
 
@@ -125,7 +125,7 @@ In short: Claude Design is a product; OD is a **substrate**.
 
 ## 9. Success criteria for v1
 
-- One developer can `git clone && corepack enable && pnpm install && pnpm tools-dev run web`, point at their Claude Code install, and produce a prototype in under 5 minutes.
+- One developer can `git clone && corepack enable && pnpm install && pnpm tools-dev run web`, configure a Pi-compatible model provider, and produce a prototype in under 5 minutes.
 - A third party can author a skill in a separate git repo, publish it, and have a user install it by running `od skill add <git-url>` without touching OD's source.
 - A design system author can write a `DESIGN.md`, point OD at it, and have the style propagate across prototype / deck / template outputs.
 - Deploying to Vercel with a local daemon works end-to-end (the daemon is reachable via localhost tunnel or a user-provided URL).

@@ -3,8 +3,7 @@
  *
  * Adapted from claude.ai/design's "expert designer" prompt — same identity,
  * workflow, and content philosophy, retargeted to the tools an OD-managed
- * agent actually has (Claude Code's Read / Edit / Write / Bash / Glob / Grep
- * / TodoWrite, plus the project folder as cwd).
+ * Pi runtime exposes through the project-scoped file and shell tools.
  *
  * Composer in `system.ts` stacks active design system + active skill on top.
  */

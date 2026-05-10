@@ -1,6 +1,6 @@
 # Open Design
 
-> **The open-source alternative to [Claude Design][cd].** Local-first, deployable, BYOK at every layer — a Node.js daemon hosts the **Pi SDK coding agent** directly, driven by **31 composable Skills** and **72 brand-grade Design Systems**. No separate local agent binary or PATH setup required; production can split API and Pi workers with Redis + Postgres.
+> **The open-source alternative to [Claude Design][cd].** Local-first, deployable, BYOK at every layer — a Node.js daemon hosts the **Pi SDK coding agent** directly, driven by **31 composable Skills** and **72 brand-grade Design Systems**. Production can split API and Pi workers with Redis + Postgres, while local development uses the same daemon-hosted runtime.
 
 <p align="center">
   <img src="docs/assets/banner.png" alt="Open Design — editorial cover: design with the agent on your laptop" width="100%" />
