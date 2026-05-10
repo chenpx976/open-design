@@ -6002,6 +6002,7 @@ export async function startServer({
       toolTokenExpiresAt: toolTokenGrant?.expiresAt ?? null,
     });
     noteAgentActivity();
+    await design.runs.flush(run);
 
     if (critiqueShouldRun) {
       const adapterStreamFormat: string = def.streamFormat ?? 'pi-sdk';

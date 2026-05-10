@@ -12,17 +12,28 @@ export function createChatRunService({
   shutdownGraceMs = 3_000,
 }) {
   const runs = new Map();
-  const persist = (operation) => {
-    try {
-      const result = operation?.();
-      if (result && typeof result.then === 'function') {
-        void result.catch((err) => {
-          console.warn('[runs] persistence write failed:', err instanceof Error ? err.message : String(err));
-        });
+  const logPersistenceError = (err) => {
+    console.warn('[runs] persistence write failed:', err instanceof Error ? err.message : String(err));
+  };
+  const persist = (operation, run = null) => {
+    const execute = async () => {
+      try {
+        await operation?.();
+      } catch (err) {
+        logPersistenceError(err);
       }
-    } catch (err) {
-      console.warn('[runs] persistence write failed:', err instanceof Error ? err.message : String(err));
+    };
+    if (run) {
+      const previous = run.persistQueue ?? Promise.resolve();
+      run.persistQueue = previous.then(execute, execute);
+      return run.persistQueue;
     }
+    try {
+      void execute();
+    } catch (err) {
+      logPersistenceError(err);
+    }
+    return Promise.resolve();
   };
 
   const create = (meta = {}) => {
@@ -46,9 +57,10 @@ export function createChatRunService({
       exitCode: null,
       signal: null,
       cancelRequested: false,
+      persistQueue: Promise.resolve(),
     };
     runs.set(run.id, run);
-    persist(() => store?.createRun?.(run));
+    persist(() => store?.createRun?.(run), run);
     return run;
   };
 
@@ -88,6 +100,7 @@ export function createChatRunService({
       signal: persisted.signal ?? null,
       cancelRequested: false,
       persistedOnly: true,
+      persistQueue: Promise.resolve(),
     };
     runs.set(run.id, run);
     if (TERMINAL_RUN_STATUSES.has(run.status)) scheduleCleanup(run);
@@ -116,8 +129,10 @@ export function createChatRunService({
     run.events.push(record);
     if (run.events.length > maxEvents) run.events.splice(0, run.events.length - maxEvents);
     run.updatedAt = Date.now();
-    persist(() => store?.appendEvent?.(run, record));
-    persist(() => store?.updateRun?.(run));
+    persist(async () => {
+      await store?.appendEvent?.(run, record);
+      await store?.updateRun?.(run);
+    }, run);
     for (const sse of run.clients) sse.send(event, data, id);
     return record;
   };
@@ -152,7 +167,7 @@ export function createChatRunService({
     run.exitCode = code;
     run.signal = signal;
     run.updatedAt = Date.now();
-    persist(() => store?.updateRun?.(run));
+    persist(() => store?.updateRun?.(run), run);
     emit(run, 'end', { code, signal, status });
     for (const sse of run.clients) sse.end();
     run.clients.clear();
@@ -300,6 +315,9 @@ export function createChatRunService({
     deliver,
     finish,
     fail,
+    flush(run) {
+      return run?.persistQueue ?? Promise.resolve();
+    },
     statusBody,
     isTerminal(status) {
       return TERMINAL_RUN_STATUSES.has(status);

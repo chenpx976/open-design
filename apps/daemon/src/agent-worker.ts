@@ -57,6 +57,15 @@ async function runJob({ job, runStore, jobQueue, runtime, workerId, heartbeatMs,
       }, heartbeatMs)
     : null;
   heartbeat?.unref?.();
+  let eventWrites = Promise.resolve();
+  const appendRunEvent = (channel: string, data: unknown) => {
+    eventWrites = eventWrites
+      .then(() => runStore.appendRunEvent(runId, channel, data))
+      .catch((err) => {
+        console.warn('[agent-worker] run event write failed:', err instanceof Error ? err.message : String(err));
+      });
+    return eventWrites;
+  };
   try {
     await runStore.updateRunStatus(runId, 'running', null, null);
     const projectFs = createLocalProjectFs(payload.projectFsRoot || payload.cwd);
@@ -71,7 +80,7 @@ async function runJob({ job, runStore, jobQueue, runtime, workerId, heartbeatMs,
       projectFs,
       events: {
         emit: (channel, data) => {
-          void runStore.appendRunEvent(runId, channel, data);
+          void appendRunEvent(channel, data);
         },
       },
     });
@@ -79,17 +88,19 @@ async function runJob({ job, runStore, jobQueue, runtime, workerId, heartbeatMs,
       throw new Error(`worker job exceeded ${maxJobMs}ms`);
     }
     if (result?.error) throw result.error;
+    await eventWrites;
     await runStore.updateRunStatus(runId, result?.aborted ? 'canceled' : 'succeeded', result?.aborted ? 1 : 0, null);
-    await runStore.appendRunEvent(runId, 'end', {
+    await appendRunEvent('end', {
       code: result?.aborted ? 1 : 0,
       signal: null,
       status: result?.aborted ? 'canceled' : 'succeeded',
     });
     await jobQueue.completeJob(job.id);
   } catch (err) {
+    await eventWrites;
     const message = err instanceof Error ? err.message : String(err);
     const retryable = job.attempts < maxAttempts;
-    await runStore.appendRunEvent(runId, 'error', {
+    await appendRunEvent('error', {
       code: 'AGENT_EXECUTION_FAILED',
       message,
       retryable,
@@ -98,7 +109,7 @@ async function runJob({ job, runStore, jobQueue, runtime, workerId, heartbeatMs,
       await runStore.updateRunStatus(runId, 'queued', null, null);
     } else {
       await runStore.updateRunStatus(runId, 'failed', 1, null);
-      await runStore.appendRunEvent(runId, 'end', { code: 1, signal: null, status: 'failed' });
+      await appendRunEvent('end', { code: 1, signal: null, status: 'failed' });
     }
     await jobQueue.failJob(job.id, message, { retryable, maxAttempts });
   } finally {

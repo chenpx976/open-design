@@ -4,7 +4,7 @@ import { createChatRunService as createChatRunServiceUntyped } from '../src/runs
 const createChatRunService = createChatRunServiceUntyped as unknown as (options: Record<string, unknown>) => any;
 
 describe('createChatRunService store hooks', () => {
-  it('mirrors run lifecycle events to the configured store', () => {
+  it('mirrors run lifecycle events to the configured store', async () => {
     const calls: string[] = [];
     const service = createChatRunService({
       createSseResponse: () => ({ send: () => {}, end: () => {}, cleanup: () => {} }),
@@ -19,6 +19,7 @@ describe('createChatRunService store hooks', () => {
     const run = service.create({ projectId: 'project-a', agentId: 'pi' });
     service.emit(run, 'agent', { type: 'text_delta', delta: 'ok' });
     service.finish(run, 'succeeded', 0, null);
+    await service.flush(run);
 
     expect(calls[0]).toMatch(/^create:/);
     expect(calls).toContain('event:agent');
