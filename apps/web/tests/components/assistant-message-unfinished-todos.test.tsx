@@ -111,4 +111,57 @@ describe('AssistantMessage unfinished todo state', () => {
     expect(screen.getByText('1 task(s) remain')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Continue remaining tasks' })).toBeNull();
   });
+
+  it('shows a waiting-output state for a streaming tool without results', () => {
+    render(
+      <AssistantMessage
+        message={messageWithEvents([
+          {
+            kind: 'tool_use',
+            id: 'bash-1',
+            name: 'Bash',
+            input: { command: 'sleep 1 && echo done' },
+          },
+        ])}
+        streaming
+        projectId="project-1"
+        isLast
+      />,
+    );
+
+    expect(screen.getByText('waiting for output…')).toBeTruthy();
+  });
+
+  it('uses the latest cumulative tool result for a repeated tool id', () => {
+    render(
+      <AssistantMessage
+        message={messageWithEvents([
+          {
+            kind: 'tool_use',
+            id: 'bash-1',
+            name: 'Bash',
+            input: { command: 'printf stream' },
+          },
+          {
+            kind: 'tool_result',
+            toolUseId: 'bash-1',
+            content: 'old partial only',
+            isError: false,
+          },
+          {
+            kind: 'tool_result',
+            toolUseId: 'bash-1',
+            content: 'new cumulative output',
+            isError: false,
+          },
+        ])}
+        streaming
+        projectId="project-1"
+        isLast
+      />,
+    );
+
+    expect(screen.getByText('new cumulative output')).toBeTruthy();
+    expect(screen.queryByText('old partial only')).toBeNull();
+  });
 });

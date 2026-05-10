@@ -158,6 +158,7 @@ export function createChatRunService({
     createdAt: run.createdAt,
     updatedAt: run.updatedAt,
     exitCode: run.exitCode,
+    lastError: lastErrorBody(run),
     signal: run.signal,
   });
 
@@ -322,4 +323,22 @@ export function createChatRunService({
       return TERMINAL_RUN_STATUSES.has(status);
     },
   };
+}
+
+function lastErrorBody(run) {
+  for (let i = run.events.length - 1; i >= 0; i -= 1) {
+    const record = run.events[i];
+    if (record?.event !== 'error') continue;
+    const payload = record.data && typeof record.data === 'object' ? record.data : {};
+    const error = payload.error && typeof payload.error === 'object' ? payload.error : {};
+    const rawMessage = error.message ?? payload.message;
+    if (typeof rawMessage !== 'string' || rawMessage.trim().length === 0) return null;
+    const body = { message: rawMessage.slice(0, 2_000) };
+    const code = typeof error.code === 'string' ? error.code : payload.code;
+    const retryable = typeof error.retryable === 'boolean' ? error.retryable : payload.retryable;
+    if (typeof code === 'string' && code) body.code = code;
+    if (typeof retryable === 'boolean') body.retryable = retryable;
+    return body;
+  }
+  return null;
 }

@@ -899,6 +899,7 @@ export const ar: Dict = {
   'tool.in': 'في {path}',
   'tool.hide': 'إخفاء',
   'tool.output': 'المخرجات',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'جاري التشغيل...',
   'tool.error': 'خطأ',
   'tool.done': 'تم',

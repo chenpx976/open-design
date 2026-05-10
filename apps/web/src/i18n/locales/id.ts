@@ -1040,6 +1040,7 @@ export const id: Dict = {
   'tool.in': 'di {path}',
   'tool.hide': 'Sembunyikan',
   'tool.output': 'Output',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'Berjalan',
   'tool.error': 'Error',
   'tool.done': 'Selesai',

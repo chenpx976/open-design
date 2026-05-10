@@ -232,6 +232,7 @@ async function consumeDaemonRun({
   let exitCode: number | null = null;
   let exitSignal: string | null = null;
   let endStatus: ChatRunStatus | null = null;
+  let terminalStatus: ChatRunStatusResponse | null = null;
   let lastEventId: string | null = initialLastEventId ?? null;
   let canceled = false;
   const cancelRun = () => {
@@ -352,6 +353,7 @@ async function consumeDaemonRun({
     if (endStatus === null) {
       const status = await fetchChatRunStatus(runId);
       if (status && isChatRunStatus(status.status) && status.status !== 'queued' && status.status !== 'running') {
+        terminalStatus = status;
         endStatus = status.status;
         exitCode = status.exitCode ?? null;
         exitSignal = status.signal ?? null;
@@ -365,6 +367,12 @@ async function consumeDaemonRun({
     if (endStatus === 'canceled') return;
 
     if (endStatus === 'failed' || exitSignal || (exitCode !== null && exitCode !== 0)) {
+      terminalStatus ??= await fetchChatRunStatus(runId);
+      const persistedMessage = terminalStatus?.lastError?.message?.trim();
+      if (persistedMessage) {
+        handlers.onError(new Error(persistedMessage));
+        return;
+      }
       const tail = stderrBuf.trim().slice(-400);
       handlers.onError(
         new Error(`agent exited with ${exitSignal ? `signal ${exitSignal}` : `code ${exitCode}`}${tail ? `\n${tail}` : ''}`),

@@ -955,6 +955,7 @@ export const en: Dict = {
   'tool.in': 'in {path}',
   'tool.hide': 'hide',
   'tool.output': 'output',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'running…',
   'tool.error': 'error',
   'tool.done': 'done',

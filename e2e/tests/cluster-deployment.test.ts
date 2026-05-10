@@ -56,7 +56,7 @@ async function waitForHealth(baseUrl: string): Promise<void> {
   throw new Error(`compose service did not become healthy: ${last}`);
 }
 
-async function createProjectAndRun(baseUrl: string, projectId: string): Promise<string> {
+async function createProjectAndRun(baseUrl: string, projectId: string, message = 'Create a deterministic Pi compose cluster smoke artifact'): Promise<string> {
   const created = await fetch(`${baseUrl}/api/projects`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -84,7 +84,7 @@ async function createProjectAndRun(baseUrl: string, projectId: string): Promise<
       designSystemId: null,
       model: 'default',
       reasoning: 'default',
-      message: 'Create a deterministic Pi compose cluster smoke artifact',
+      message,
     }),
   });
   expect(started.ok).toBe(true);
@@ -92,21 +92,51 @@ async function createProjectAndRun(baseUrl: string, projectId: string): Promise<
   return runId;
 }
 
-async function waitForRun(baseUrl: string, runId: string): Promise<void> {
+async function waitForRunStatus(baseUrl: string, runId: string, expected: 'succeeded' | 'failed'): Promise<Record<string, unknown>> {
   const deadline = Date.now() + 90_000;
   let status = '';
+  let body: Record<string, unknown> = {};
   while (Date.now() < deadline) {
     const response = await fetch(`${baseUrl}/api/runs/${runId}`);
     expect(response.ok).toBe(true);
-    const body = await response.json() as { status: string };
-    status = body.status;
-    if (status === 'succeeded') return;
-    if (status === 'failed' || status === 'canceled') {
+    body = await response.json() as Record<string, unknown>;
+    status = String(body.status ?? '');
+    if (status === expected) return body;
+    if (status === 'failed' || status === 'canceled' || status === 'succeeded') {
       throw new Error(`run ended with status ${status}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
   throw new Error(`run did not finish, last status=${status}`);
+}
+
+async function findRedisJobForRun(projectName: string, env: NodeJS.ProcessEnv, runId: string): Promise<{ key: string; status: string; error: string }> {
+  const redisJobs = await dockerCompose(projectName, [
+    'exec',
+    '-T',
+    'redis',
+    'redis-cli',
+    'keys',
+    'open-design:agent-jobs:job:*',
+  ], env);
+  const jobKeys = redisJobs.stdout.trim().split(/\s+/).filter(Boolean);
+  for (const key of jobKeys) {
+    const row = await dockerCompose(projectName, [
+      'exec',
+      '-T',
+      'redis',
+      'redis-cli',
+      '--raw',
+      'hmget',
+      key,
+      'runId',
+      'status',
+      'error',
+    ], env);
+    const [storedRunId, status = '', error = ''] = row.stdout.trimEnd().split('\n');
+    if (storedRunId === runId) return { key, status, error };
+  }
+  throw new Error(`missing Redis job for run ${runId}`);
 }
 
 describe('cluster deployment configuration', () => {
@@ -161,6 +191,7 @@ describe('cluster deployment configuration', () => {
       OPEN_DESIGN_AGENT_RUNTIME: 'sqlite-worker',
       OPEN_DESIGN_AGENT_RUN_STORE: 'postgres',
       OPEN_DESIGN_AGENT_JOB_QUEUE: 'redis',
+      OPEN_DESIGN_AGENT_WORKER_MAX_ATTEMPTS: '1',
       OD_E2E_FAKE_PI_AGENT: '1',
     };
 
@@ -172,7 +203,7 @@ describe('cluster deployment configuration', () => {
 
       const projectId = `compose-cluster-${Date.now()}`;
       const runId = await createProjectAndRun(baseUrl, projectId);
-      await waitForRun(baseUrl, runId);
+      await waitForRunStatus(baseUrl, runId, 'succeeded');
 
       const runtimeStatus = await fetch(`${baseUrl}/api/agent-runtime/status`);
       expect(runtimeStatus.ok).toBe(true);
@@ -209,26 +240,8 @@ describe('cluster deployment configuration', () => {
       expect(eventCounts.stdout).toContain('end:1');
       expect(eventCounts.stdout).toContain('start:1');
 
-      const redisJobs = await dockerCompose(projectName, [
-        'exec',
-        '-T',
-        'redis',
-        'redis-cli',
-        'keys',
-        'open-design:agent-jobs:job:*',
-      ], env);
-      const jobKey = redisJobs.stdout.trim().split(/\s+/).find(Boolean);
-      expect(jobKey).toBeTruthy();
-      const redisStatus = await dockerCompose(projectName, [
-        'exec',
-        '-T',
-        'redis',
-        'redis-cli',
-        'hget',
-        jobKey!,
-        'status',
-      ], env);
-      expect(redisStatus.stdout.trim()).toBe('succeeded');
+      const redisSucceededJob = await findRedisJobForRun(projectName, env, runId);
+      expect(redisSucceededJob.status).toBe('succeeded');
 
       const queueDepth = await dockerCompose(projectName, [
         'exec',
@@ -264,6 +277,39 @@ describe('cluster deployment configuration', () => {
         '--healthcheck',
       ], env);
       expect(workerHealth.stdout).toContain('"ok":true');
+
+      const failedProjectId = `compose-cluster-failed-${Date.now()}`;
+      const failedRunId = await createProjectAndRun(
+        baseUrl,
+        failedProjectId,
+        'Fail deterministic Pi E2E compose cluster smoke',
+      );
+      const failedStatus = await waitForRunStatus(baseUrl, failedRunId, 'failed') as {
+        lastError?: { message?: string; code?: string; retryable?: boolean } | null;
+      };
+      expect(failedStatus.lastError?.message).toContain('Deterministic fake Pi failure');
+      expect(failedStatus.lastError?.code).toBe('AGENT_EXECUTION_FAILED');
+      expect(failedStatus.lastError?.retryable).toBe(false);
+
+      const failedEventCounts = await dockerCompose(projectName, [
+        'exec',
+        '-T',
+        'postgres',
+        'psql',
+        '-U',
+        'open_design',
+        '-d',
+        'open_design',
+        '-tAc',
+        `select event || ':' || count(*) from agent_run_events where run_id='${failedRunId}' group by event order by event;`,
+      ], env);
+      expect(failedEventCounts.stdout).toContain('agent:');
+      expect(failedEventCounts.stdout).toContain('error:1');
+      expect(failedEventCounts.stdout).toContain('end:1');
+
+      const redisFailedJob = await findRedisJobForRun(projectName, env, failedRunId);
+      expect(redisFailedJob.status).toBe('failed');
+      expect(redisFailedJob.error).toContain('Deterministic fake Pi failure');
     } finally {
       await dockerCompose(projectName, ['down', '-v', '--remove-orphans'], env).catch(() => {});
     }

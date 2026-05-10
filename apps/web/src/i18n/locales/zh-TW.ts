@@ -920,6 +920,7 @@ export const zhTW: Dict = {
   'tool.in': '於 {path}',
   'tool.hide': '隱藏',
   'tool.output': '輸出',
+  'tool.waitingForOutput': '等待輸出…',
   'tool.running': '執行中…',
   'tool.error': '錯誤',
   'tool.done': '完成',

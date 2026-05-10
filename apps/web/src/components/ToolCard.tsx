@@ -56,9 +56,9 @@ export function ToolCard({
   const lowerName = name.toLowerCase();
   if (name === 'TodoWrite' || lowerName === 'todowrite') return <TodoCard input={use.input} />;
   if (name === 'Write' || lowerName === 'write' || name === 'create_file')
-    return <FileWriteCard input={use.input} result={result} ctx={ctx} />;
+    return <FileWriteCard input={use.input} result={result} runStreaming={runStreaming} ctx={ctx} />;
   if (name === 'Edit' || lowerName === 'edit' || name === 'str_replace_edit')
-    return <FileEditCard input={use.input} result={result} ctx={ctx} />;
+    return <FileEditCard input={use.input} result={result} runStreaming={runStreaming} ctx={ctx} />;
   if (name === 'Read' || lowerName === 'read' || name === 'read_file')
     return <FileReadCard input={use.input} result={result} ctx={ctx} runStreaming={runStreaming} />;
   if (name === 'Bash' || lowerName === 'bash') return <BashCard input={use.input} result={result} runStreaming={runStreaming} />;
@@ -66,7 +66,7 @@ export function ToolCard({
   if (name === 'Grep' || lowerName === 'grep') return <GrepCard input={use.input} result={result} runStreaming={runStreaming} />;
   if (name === 'WebFetch' || name === 'web_fetch' || lowerName === 'webfetch') return <WebFetchCard input={use.input} />;
   if (name === 'WebSearch' || name === 'web_search' || lowerName === 'websearch') return <WebSearchCard input={use.input} />;
-  return <GenericCard name={name} input={use.input} result={result} />;
+  return <GenericCard name={name} input={use.input} result={result} runStreaming={runStreaming} />;
 }
 
 interface FileToolCtx {
@@ -128,10 +128,12 @@ function TodoCard({ input }: { input: unknown }) {
 function FileWriteCard({
   input,
   result,
+  runStreaming,
   ctx,
 }: {
   input: unknown;
   result?: Props['result'];
+  runStreaming?: boolean;
   ctx: FileToolCtx;
 }) {
   const t = useT();
@@ -147,7 +149,7 @@ function FileWriteCard({
         {lines !== null ? (
           <span className="op-meta">{t('tool.lines', { n: lines })}</span>
         ) : null}
-        <ResultBadge result={result} />
+        <ResultBadge result={result} runStreaming={runStreaming} />
         <OpenInTabButton filePath={file} ctx={ctx} />
       </div>
     </div>
@@ -157,10 +159,12 @@ function FileWriteCard({
 function FileEditCard({
   input,
   result,
+  runStreaming,
   ctx,
 }: {
   input: unknown;
   result?: Props['result'];
+  runStreaming?: boolean;
   ctx: FileToolCtx;
 }) {
   const t = useT();
@@ -182,7 +186,7 @@ function FileEditCard({
         <span className="op-meta">
           {editCount} {editCount === 1 ? t('tool.changeSingular') : t('tool.changePlural')}
         </span>
-        <ResultBadge result={result} />
+        <ResultBadge result={result} runStreaming={runStreaming} />
         <OpenInTabButton filePath={file} ctx={ctx} />
       </div>
     </div>
@@ -203,17 +207,17 @@ function FileReadCard({
   const t = useT();
   const obj = (input ?? {}) as { file_path?: string; path?: string };
   const file = obj.file_path ?? obj.path ?? '(unnamed)';
-  const [open, setOpen] = useState(Boolean(runStreaming && result?.content));
+  const [open, setOpen] = useState(Boolean(result?.content && (runStreaming || result.isError)));
   useEffect(() => {
-    if (runStreaming && result?.content) setOpen(true);
-  }, [result?.content, runStreaming]);
+    if (result?.content && (runStreaming || result.isError)) setOpen(true);
+  }, [result?.content, result?.isError, runStreaming]);
   return (
     <div className="op-card op-file">
       <div className="op-card-head">
         <span className="op-icon op-icon-read" aria-hidden>↗</span>
         <span className="op-title">{t('tool.read')}</span>
         <code className="op-path">{file}</code>
-        <ResultBadge result={result} />
+        <ResultBadge result={result} runStreaming={runStreaming} />
         <OpenInTabButton filePath={file} ctx={ctx} />
         {result?.content ? (
           <button className="op-toggle" onClick={() => setOpen((o) => !o)}>
@@ -233,17 +237,17 @@ function BashCard({ input, result, runStreaming }: { input: unknown; result?: Pr
   const obj = (input ?? {}) as { command?: string; description?: string };
   const command = obj.command ?? '';
   const desc = obj.description;
-  const [open, setOpen] = useState(Boolean(runStreaming && result?.content));
+  const [open, setOpen] = useState(Boolean(result?.content && (runStreaming || result.isError)));
   useEffect(() => {
-    if (runStreaming && result?.content) setOpen(true);
-  }, [result?.content, runStreaming]);
+    if (result?.content && (runStreaming || result.isError)) setOpen(true);
+  }, [result?.content, result?.isError, runStreaming]);
   return (
     <div className="op-card op-bash">
       <div className="op-card-head">
         <span className="op-icon" aria-hidden>$</span>
         <span className="op-title">{t('tool.bash')}</span>
         {desc ? <span className="op-meta op-desc">{desc}</span> : null}
-        <ResultBadge result={result} />
+        <ResultBadge result={result} runStreaming={runStreaming} />
         {result && result.content ? (
           <button className="op-toggle" onClick={() => setOpen((o) => !o)}>
             {open ? t('tool.hide') : t('tool.output')}
@@ -261,10 +265,10 @@ function BashCard({ input, result, runStreaming }: { input: unknown; result?: Pr
 function GlobCard({ input, result, runStreaming }: { input: unknown; result?: Props['result']; runStreaming?: boolean }) {
   const t = useT();
   const obj = (input ?? {}) as { pattern?: string; path?: string };
-  const [open, setOpen] = useState(Boolean(runStreaming && result?.content));
+  const [open, setOpen] = useState(Boolean(result?.content && (runStreaming || result.isError)));
   useEffect(() => {
-    if (runStreaming && result?.content) setOpen(true);
-  }, [result?.content, runStreaming]);
+    if (result?.content && (runStreaming || result.isError)) setOpen(true);
+  }, [result?.content, result?.isError, runStreaming]);
   return (
     <div className="op-card op-search">
       <div className="op-card-head">
@@ -274,7 +278,7 @@ function GlobCard({ input, result, runStreaming }: { input: unknown; result?: Pr
         {obj.path ? (
           <span className="op-meta">{t('tool.in', { path: obj.path })}</span>
         ) : null}
-        <ResultBadge result={result} />
+        <ResultBadge result={result} runStreaming={runStreaming} />
         {result?.content ? (
           <button className="op-toggle" onClick={() => setOpen((o) => !o)}>
             {open ? t('tool.hide') : t('tool.output')}
@@ -291,10 +295,10 @@ function GlobCard({ input, result, runStreaming }: { input: unknown; result?: Pr
 function GrepCard({ input, result, runStreaming }: { input: unknown; result?: Props['result']; runStreaming?: boolean }) {
   const t = useT();
   const obj = (input ?? {}) as { pattern?: string; path?: string; glob?: string };
-  const [open, setOpen] = useState(Boolean(runStreaming && result?.content));
+  const [open, setOpen] = useState(Boolean(result?.content && (runStreaming || result.isError)));
   useEffect(() => {
-    if (runStreaming && result?.content) setOpen(true);
-  }, [result?.content, runStreaming]);
+    if (result?.content && (runStreaming || result.isError)) setOpen(true);
+  }, [result?.content, result?.isError, runStreaming]);
   return (
     <div className="op-card op-search">
       <div className="op-card-head">
@@ -304,7 +308,7 @@ function GrepCard({ input, result, runStreaming }: { input: unknown; result?: Pr
         {obj.path ? (
           <span className="op-meta">{t('tool.in', { path: obj.path })}</span>
         ) : null}
-        <ResultBadge result={result} />
+        <ResultBadge result={result} runStreaming={runStreaming} />
         {result?.content ? (
           <button className="op-toggle" onClick={() => setOpen((o) => !o)}>
             {open ? t('tool.hide') : t('tool.output')}
@@ -350,10 +354,12 @@ function GenericCard({
   name,
   input,
   result,
+  runStreaming,
 }: {
   name: string;
   input: unknown;
   result?: Props['result'];
+  runStreaming?: boolean;
 }) {
   const summary = describeInput(input);
   return (
@@ -362,15 +368,21 @@ function GenericCard({
         <span className="op-icon" aria-hidden>·</span>
         <span className="op-title">{name}</span>
         {summary ? <span className="op-meta">{truncate(summary, 200)}</span> : null}
-        <ResultBadge result={result} />
+        <ResultBadge result={result} runStreaming={runStreaming} />
       </div>
     </div>
   );
 }
 
-function ResultBadge({ result }: { result?: Props['result'] }) {
+function ResultBadge({ result, runStreaming }: { result?: Props['result']; runStreaming?: boolean }) {
   const t = useT();
-  if (!result) return <span className="op-status op-status-running">{t('tool.running')}</span>;
+  if (!result) {
+    return (
+      <span className="op-status op-status-running">
+        {runStreaming ? t('tool.waitingForOutput') : t('tool.running')}
+      </span>
+    );
+  }
   if (result.isError) return <span className="op-status op-status-error">{t('tool.error')}</span>;
   return <span className="op-status op-status-ok">{t('tool.done')}</span>;
 }

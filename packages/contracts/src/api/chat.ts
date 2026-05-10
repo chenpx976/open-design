@@ -52,6 +52,11 @@ export interface ChatRunStatusResponse {
   createdAt: number;
   updatedAt: number;
   exitCode?: number | null;
+  lastError?: {
+    message: string;
+    code?: string;
+    retryable?: boolean;
+  } | null;
   signal?: string | null;
 }
 

@@ -51,3 +51,10 @@
 - `e2e/specs/*.spec.ts`：运行时与平台级 smoke 测试。
 - `e2e/tests/*.test.ts`：轻量 Vitest 完整性校验。
 - `e2e/lib/**`：仅放 helper，不放可执行用例入口。
+
+## 本机权限说明
+
+`tools-dev` 和 Playwright 的真实 daemon smoke 会通过 `tsx` IPC pipe、本地
+`127.0.0.1` 监听和浏览器进程启动服务。如果在受限沙箱中看到
+`listen EPERM`，这表示测试环境禁止本地 IPC/端口监听，应在本机 shell 或
+允许本地监听的 CI runner 中重跑；不要把这类错误归因成产品运行失败。

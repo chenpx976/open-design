@@ -71,12 +71,13 @@ describe('listSkills', () => {
       previewType: 'html',
     });
     expect(skill.triggers.length).toBeGreaterThan(0);
-    expect(skill.body).toContain(`> **Skill root (absolute fallback):** \`${liveArtifactRoot}\``);
     expect(skill.body).toContain(`${SKILLS_CWD_ALIAS}/live-artifact/`);
     expect(skill.body).toContain('references/artifact-schema.md');
     expect(skill.body).toContain('references/connector-policy.md');
     expect(skill.body).toContain('references/refresh-contract.md');
     expect(skill.body).toContain(`${SKILLS_CWD_ALIAS}/live-artifact/references/artifact-schema.md`);
+    expect(skill.body).not.toContain(liveArtifactRoot);
+    expect(skill.body).not.toMatch(/Skill root \(absolute fallback\)/);
     expect(skill.body).not.toContain(`${SKILLS_CWD_ALIAS}/live-artifact/assets/template.html`);
     expect(skill.body).not.toContain(`${SKILLS_CWD_ALIAS}/live-artifact/references/layouts.md`);
     expect(skill.body).toContain('"$OD_NODE_BIN" "$OD_BIN" tools live-artifacts create --input artifact.json');
@@ -145,7 +146,7 @@ describe('listSkills', () => {
 });
 
 describe('listSkills preamble', () => {
-  it('emits both a cwd-relative skill root and an absolute fallback', async () => {
+  it('emits only cwd-relative skill roots for staged skill side files', async () => {
     const root = fresh();
     writeSkill(root, 'demo-skill', {
       withAttachments: true,
@@ -165,14 +166,8 @@ describe('listSkills preamble', () => {
       `${SKILLS_CWD_ALIAS}/demo-skill/assets/template.html`,
     );
 
-    // The absolute fallback is required for two cases the relative path
-    // cannot serve:
-    //   - calls without a project (cwd defaults to PROJECT_ROOT, where
-    //     the absolute path is in fact an in-cwd path);
-    //   - environments where `stageActiveSkill()` failed.
-    // Claude/Copilot are additionally given `--add-dir` for that path.
-    expect(skill.body).toContain(skill.dir);
-    expect(skill.body).toMatch(/Skill root \(absolute fallback\)/);
+    expect(skill.body).not.toContain(skill.dir);
+    expect(skill.body).not.toMatch(/Skill root \(absolute fallback\)/);
     expect(skill.body).toMatch(/Skill root \(relative to project\)/);
   });
 

@@ -1016,6 +1016,7 @@ function renderLocaleInstruction(locale) {
   return [
     '# UI language',
     `Use ${languageName} (${value}) for all user-facing prose and every <question-form> title, label, help text, option, card, and submitLabel.`,
+    'Treat any English <question-form> examples in system or skill prompts as schema examples only; rewrite all visible example text in the UI language.',
     'Keep filenames, code, shell commands, CSS/HTML identifiers, and source excerpts in their original language.',
   ].join('\n');
 }
@@ -5486,6 +5487,12 @@ export async function startServer({
         return design.runs.finish(run, 'failed', 1, null);
       }
       if (result?.error) {
+        const message = result.error instanceof Error ? result.error.message : String(result.error);
+        if (!run.events?.some((record) => record?.event === 'error')) {
+          send('error', createSseErrorPayload('AGENT_EXECUTION_FAILED', message, {
+            retryable: false,
+          }));
+        }
         return design.runs.finish(run, 'failed', 1, null);
       }
       if (

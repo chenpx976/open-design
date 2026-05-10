@@ -927,6 +927,7 @@ export const zhCN: Dict = {
   'tool.in': '于 {path}',
   'tool.hide': '隐藏',
   'tool.output': '输出',
+  'tool.waitingForOutput': '等待输出…',
   'tool.running': '运行中…',
   'tool.error': '错误',
   'tool.done': '完成',

@@ -93,6 +93,29 @@ function e2eHtml(prompt: string): string {
 }
 
 async function runE2eFakePiAgent(input: AgentRuntimeRunInput): Promise<AgentRuntimeRunResult> {
+  if (/fail deterministic Pi E2E|deterministic Pi failure/i.test(input.prompt)) {
+    input.events.noteActivity?.();
+    input.events.emit('agent', { type: 'status', label: 'initializing', detail: 'e2e/fake-pi' });
+    input.events.emit('agent', { type: 'thinking_start' });
+    input.events.emit('agent', {
+      type: 'thinking_delta',
+      delta: 'Preparing a deterministic failing Pi-style tool call for recovery coverage.',
+    });
+    input.events.emit('agent', { type: 'thinking_end' });
+    input.events.emit('agent', {
+      type: 'tool_use',
+      id: 'fake-pi-failing-bash',
+      name: 'Bash',
+      input: { command: 'exit 42', description: 'Simulate a deterministic tool failure' },
+    });
+    input.events.emit('agent', {
+      type: 'tool_result',
+      toolUseId: 'fake-pi-failing-bash',
+      content: 'simulated tool failure: deterministic fake Pi failure',
+      isError: true,
+    });
+    return { resolvedModel: 'e2e/fake-pi', error: new Error('Deterministic fake Pi failure') };
+  }
   const html = e2eHtml(input.prompt);
   const projectFs = input.projectFs;
   input.events.noteActivity?.();
@@ -239,10 +262,14 @@ export function createSqliteWorkerAgentRuntime({
       });
 
       let lastEventId = 0;
+      let lastErrorMessage: string | null = null;
       while (!input.signal?.aborted) {
         for (const record of await runStore.listRunEventsAfter(runId, lastEventId)) {
           lastEventId = Math.max(lastEventId, record.id);
           if (record.event === 'start' || record.event === 'end') continue;
+          if (record.event === 'error') {
+            lastErrorMessage = extractRunEventErrorMessage(record.data) ?? lastErrorMessage;
+          }
           if (record.event === 'agent') {
             input.events.emit('agent', record.data, record.id);
           } else {
@@ -252,7 +279,7 @@ export function createSqliteWorkerAgentRuntime({
         const run = await runStore.getRun(runId);
         if (run?.status === 'succeeded') return { aborted: false };
         if (run?.status === 'failed') {
-          return { error: new Error('worker run failed') };
+          return { error: new Error(lastErrorMessage ?? 'worker run failed') };
         }
         if (run?.status === 'canceled') return { aborted: true };
         await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
@@ -260,6 +287,13 @@ export function createSqliteWorkerAgentRuntime({
       return { aborted: true };
     },
   };
+}
+
+function extractRunEventErrorMessage(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const payload = data as { message?: unknown; error?: { message?: unknown } };
+  const message = typeof payload.error?.message === 'string' ? payload.error.message : payload.message;
+  return typeof message === 'string' && message.trim().length > 0 ? message : null;
 }
 
 export function createAgentRuntimeFromEnv(

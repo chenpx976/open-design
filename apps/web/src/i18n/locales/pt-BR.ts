@@ -931,6 +931,7 @@ export const ptBR: Dict = {
   'tool.in': 'em {path}',
   'tool.hide': 'ocultar',
   'tool.output': 'saída',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'executando…',
   'tool.error': 'erro',
   'tool.done': 'concluído',

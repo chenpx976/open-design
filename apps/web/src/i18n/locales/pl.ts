@@ -899,6 +899,7 @@ export const pl: Dict = {
   'tool.in': 'w {path}',
   'tool.hide': 'ukryj',
   'tool.output': 'wyjście',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'uruchomiony…',
   'tool.error': 'błąd',
   'tool.done': 'gotowe',

@@ -63,4 +63,26 @@ describe('createChatRunService store hooks', () => {
     expect(run.events).toHaveLength(2);
     expect(run.nextEventId).toBe(3);
   });
+
+  it('includes the latest persisted error in run status bodies', () => {
+    const service = createChatRunService({
+      createSseResponse: () => ({ send: () => {}, end: () => {}, cleanup: () => {} }),
+      createSseErrorPayload: (code: string, message: string, init: Record<string, unknown>) => ({
+        message,
+        error: { code, message, ...init },
+      }),
+    });
+
+    const run = service.create({ projectId: 'project-a', agentId: 'pi' });
+    service.fail(run, 'AGENT_EXECUTION_FAILED', 'deterministic failure detail', { retryable: false });
+
+    expect(service.statusBody(run)).toMatchObject({
+      status: 'failed',
+      lastError: {
+        code: 'AGENT_EXECUTION_FAILED',
+        message: 'deterministic failure detail',
+        retryable: false,
+      },
+    });
+  });
 });

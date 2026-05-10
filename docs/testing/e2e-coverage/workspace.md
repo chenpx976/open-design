@@ -11,6 +11,7 @@
 ## 对应测试文件
 
 - `e2e/ui/app.test.ts`
+- `e2e/ui/real-daemon-run.test.ts`
 - `e2e/ui/workspace-keyboard-flows.test.ts`
 
 ## 已自动化
@@ -34,6 +35,8 @@
 | WS-013 | daemon 发送失败后，错误详情仍然可见，便于重试和排查 | `app.test.ts` direct test |
 | WS-014 | 手动编辑模式支持内容、样式、源码 patch，以及 undo/redo | `app.test.ts` direct test |
 | WS-015 | deck 形态 HTML 在手动编辑模式下仍保留 deck 导航能力 | `app.test.ts` direct test |
+| WS-016 | 真实 daemon/Pi-compatible runtime 会流式展示 thinking、tool、file、preview，并支持同项目 follow-up | `real-daemon-run.test.ts` |
+| WS-017 | 失败的真实 daemon run 会在刷新后保留 failed 状态、错误详情和最后工具输出 | `real-daemon-run.test.ts` |
 
 ### 键盘优先工作区流
 

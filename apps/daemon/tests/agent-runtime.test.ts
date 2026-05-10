@@ -83,6 +83,42 @@ describe('createQueuedAgentRuntime', () => {
     expect(enqueued[0]).toMatchObject({ prompt: 'hello', cwd: process.cwd() });
   });
 
+  it('returns the worker error event detail when a sqlite-worker run fails', async () => {
+    const runtime = createSqliteWorkerAgentRuntime({
+      jobQueue: {
+        enqueueJob: () => ({ id: 'job-a', runId: 'run-a' }),
+      },
+      runStore: {
+        listRunEventsAfter: () => [
+          {
+            id: 1,
+            event: 'error',
+            data: { message: 'deterministic worker detail', retryable: false },
+            timestamp: 1,
+          },
+        ],
+        getRun: () => ({
+          id: 'run-a',
+          projectId: null,
+          conversationId: null,
+          assistantMessageId: null,
+          clientRequestId: null,
+          agentId: 'pi',
+          status: 'failed',
+          createdAt: 1,
+          updatedAt: 2,
+          exitCode: 1,
+          signal: null,
+        }),
+      },
+      pollIntervalMs: 1,
+    });
+
+    await expect(runtime.run({ ...baseInput('hello'), runId: 'run-a' })).resolves.toMatchObject({
+      error: expect.objectContaining({ message: 'deterministic worker detail' }),
+    });
+  });
+
   it('can select the deterministic Pi E2E runtime', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'od-fake-pi-runtime-'));
     const events: unknown[] = [];

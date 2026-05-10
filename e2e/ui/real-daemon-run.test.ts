@@ -89,6 +89,49 @@ test('Pi daemon run persists Pi-style event history through the public runs API'
   await expectProjectFileToContain(page, projectId, GENERATED_FILE, 'Pi Agent E2E');
 });
 
+test('Pi daemon run preserves detailed failure state after refresh', async ({ page }) => {
+  await page.goto('/');
+  await createProject(page, 'Pi failure recovery smoke');
+  await expectWorkspaceReady(page);
+
+  await sendPrompt(page, 'Fail deterministic Pi E2E smoke');
+
+  await expect(page.locator('.msg.error', { hasText: 'Deterministic fake Pi failure' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Failed')).toBeVisible();
+  await expect(page.getByText('simulated tool failure: deterministic fake Pi failure')).toBeVisible();
+
+  await page.reload();
+
+  await expect(page.locator('.status-detail', { hasText: 'Deterministic fake Pi failure' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Failed')).toBeVisible();
+  await expect(page.getByText('simulated tool failure: deterministic fake Pi failure')).toBeVisible();
+});
+
+test('Pi daemon failed run exposes lastError through the public runs API', async ({ page }) => {
+  const projectId = `pi-api-failure-${Date.now()}`;
+  const { conversationId } = await createProjectViaApi(page, projectId, 'Pi API failure smoke');
+  const runId = await startRunAndWaitForStatus(page, {
+    projectId,
+    conversationId,
+    message: 'Fail deterministic Pi E2E API smoke',
+    expectedStatus: 'failed',
+  });
+
+  const status = await page.request.get(`/api/runs/${runId}`);
+  expect(status.ok()).toBeTruthy();
+  const body = (await status.json()) as { status: string; lastError?: { message?: string; code?: string } | null };
+  expect(body.status).toBe('failed');
+  expect(body.lastError?.message).toContain('Deterministic fake Pi failure');
+  expect(body.lastError?.code).toBe('AGENT_EXECUTION_FAILED');
+
+  const events = await page.request.get(`/api/runs/${runId}/events`);
+  expect(events.ok()).toBeTruthy();
+  const eventStream = await events.text();
+  expect(eventStream).toContain('simulated tool failure: deterministic fake Pi failure');
+  expect(eventStream).toContain('event: error');
+  expect(eventStream).toContain('"status":"failed"');
+});
+
 async function createProject(page: Page, name: string) {
   await expect(page.getByTestId('new-project-panel')).toBeVisible();
   await page.getByTestId('new-project-tab-prototype').click();
@@ -152,6 +195,18 @@ async function startRunAndWaitForSuccess(
     message: string;
   },
 ) {
+  return startRunAndWaitForStatus(page, { ...options, expectedStatus: 'succeeded' });
+}
+
+async function startRunAndWaitForStatus(
+  page: Page,
+  options: {
+    projectId: string;
+    conversationId: string;
+    message: string;
+    expectedStatus: 'succeeded' | 'failed';
+  },
+) {
   const requestId = `pi-${Date.now()}`;
   const response = await page.request.post('/api/runs', {
     data: {
@@ -177,7 +232,7 @@ async function startRunAndWaitForSuccess(
       const body = (await status.json()) as { status: string };
       return body.status;
     }, { timeout: 20_000 })
-    .toBe('succeeded');
+    .toBe(options.expectedStatus);
 
   return runId;
 }

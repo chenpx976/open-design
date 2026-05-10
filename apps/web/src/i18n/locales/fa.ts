@@ -873,6 +873,7 @@ export const fa: Dict = {
   'tool.in': 'در {path}',
   'tool.hide': 'پنهان',
   'tool.output': 'خروجی',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'در حال اجرا…',
   'tool.error': 'خطا',
   'tool.done': 'انجام شد',

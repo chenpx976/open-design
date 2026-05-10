@@ -899,6 +899,7 @@ export const hu: Dict = {
   'tool.in': 'itt: {path}',
   'tool.hide': 'elrejtés',
   'tool.output': 'kimenet',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'fut…',
   'tool.error': 'hiba',
   'tool.done': 'kész',

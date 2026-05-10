@@ -786,6 +786,7 @@ export const ja: Dict = {
   'tool.in': '{path} 内',
   'tool.hide': '隠す',
   'tool.output': '出力',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': '実行中…',
   'tool.error': 'エラー',
   'tool.done': '完了',

@@ -931,6 +931,7 @@ export const ru: Dict = {
   'tool.in': 'в {path}',
   'tool.hide': 'скрыть',
   'tool.output': 'вывод',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'выполняется…',
   'tool.error': 'ошибка',
   'tool.done': 'готово',

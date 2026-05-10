@@ -915,6 +915,7 @@ export const th: Dict = {
   'tool.in': 'ผ่านทางที่อยู่ของ {path}',
   'tool.hide': 'ถูกแอบแฝง',
   'tool.output': 'ข้อสั่งสรุปหน้าจอ',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'เริ่มทำงานต่อ…',
   'tool.error': 'สะดุดขัดข้อง',
   'tool.done': 'จบบริบูรณ์',

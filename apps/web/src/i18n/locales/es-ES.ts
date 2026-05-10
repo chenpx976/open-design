@@ -788,6 +788,7 @@ export const esES: Dict = {
   'tool.in': 'en {path}',
   'tool.hide': 'ocultar',
   'tool.output': 'salida',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'ejecutando…',
   'tool.error': 'error',
   'tool.done': 'listo',

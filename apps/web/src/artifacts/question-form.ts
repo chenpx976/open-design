@@ -249,9 +249,14 @@ function stripCodeFence(body: string): string {
 }
 
 function repairJsonFragment(input: string): string | null {
-  let source = input.trim();
+  const source = input.trim();
   if (!source) return null;
-  source = source.replace(/,\s*$/g, '');
+  return closeJsonFragment(source) ?? closeJsonFragment(trimToLastCompleteValue(source));
+}
+
+function closeJsonFragment(input: string | null): string | null {
+  if (!input) return null;
+  const source = input.trim().replace(/,\s*$/g, '');
   const stack: string[] = [];
   let inString = false;
   let escaping = false;
@@ -285,6 +290,39 @@ function repairJsonFragment(input: string): string | null {
   } catch {
     return null;
   }
+}
+
+function trimToLastCompleteValue(input: string): string | null {
+  const stack: string[] = [];
+  let inString = false;
+  let escaping = false;
+  let lastSafeEnd = -1;
+  for (let i = 0; i < input.length; i += 1) {
+    const ch = input[i]!;
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+      } else if (ch === '\\') {
+        escaping = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === '{') stack.push('}');
+    else if (ch === '[') stack.push(']');
+    else if (ch === '}' || ch === ']') {
+      if (stack[stack.length - 1] !== ch) return null;
+      stack.pop();
+      lastSafeEnd = i + 1;
+    }
+  }
+  if (lastSafeEnd <= 0) return null;
+  return input.slice(0, lastSafeEnd).replace(/,\s*$/g, '');
 }
 
 function normalizeType(raw: unknown): QuestionType {

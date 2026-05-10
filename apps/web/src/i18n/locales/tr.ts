@@ -896,6 +896,7 @@ export const tr: Dict = {
   'tool.in': '{path} yolunda',
   'tool.hide': 'sakla',
   'tool.output': 'çıktı',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'çalışıyor…',
   'tool.error': 'hata',
   'tool.done': 'bitti',

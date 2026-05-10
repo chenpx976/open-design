@@ -932,6 +932,7 @@ export const uk: Dict = {
   'tool.in': 'в {path}',
   'tool.hide': 'приховати',
   'tool.output': 'вихід',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': 'виконується…',
   'tool.error': 'помилка',
   'tool.done': 'готово',

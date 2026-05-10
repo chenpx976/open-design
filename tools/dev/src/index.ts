@@ -60,6 +60,10 @@ import {
   waitForDesktopRuntime,
   waitForWebRuntime,
 } from "./sidecar-client.js";
+import {
+  probeDaemonStatusFromPort,
+  probeWebStatusFromPort,
+} from "./status-probe.js";
 
 type CliOptions = ToolDevOptions & {
   expr?: string;
@@ -70,6 +74,10 @@ type CliOptions = ToolDevOptions & {
 };
 
 const TOOLS_DEV_PARENT_PID_ENV = SIDECAR_ENV.TOOLS_DEV_PARENT_PID;
+
+function resolveStatusPort(optionValue: number | string | null | undefined, optionName: string, envName: string): number | null {
+  return parsePortOption(optionValue ?? process.env[envName] ?? null, optionName);
+}
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -692,17 +700,27 @@ async function stopApp(config: ToolDevConfig, appName: ToolDevAppName) {
   };
 }
 
-async function inspectAppStatus(config: ToolDevConfig, appName: ToolDevAppName) {
+async function inspectAppStatus(config: ToolDevConfig, appName: ToolDevAppName, options: CliOptions = {}) {
   if (appName === APP_KEYS.DAEMON) {
     const status = await inspectDaemonRuntime(runtimeLookup(config));
     if (status != null) return status;
     const active = await findAppProcessTree(config, appName);
+    const portStatus = await probeDaemonStatusFromPort(
+      resolveStatusPort(options.daemonPort, "--daemon-port", "OD_PORT"),
+      active.rootPids[0] ?? null,
+    );
+    if (portStatus != null) return portStatus;
     return { pid: active.rootPids[0] ?? null, state: active.pids.length > 0 ? "starting" : "idle", url: null } satisfies DaemonStatusSnapshot;
   }
   if (appName === APP_KEYS.WEB) {
     const status = await inspectWebRuntime(runtimeLookup(config));
     if (status != null) return status;
     const active = await findAppProcessTree(config, appName);
+    const portStatus = await probeWebStatusFromPort(
+      resolveStatusPort(options.webPort, "--web-port", "OD_WEB_PORT"),
+      active.rootPids[0] ?? null,
+    );
+    if (portStatus != null) return portStatus;
     return { pid: active.rootPids[0] ?? null, state: active.pids.length > 0 ? "starting" : "idle", url: null } satisfies WebStatusSnapshot;
   }
 
@@ -719,12 +737,12 @@ function summarizeStatus(apps: Record<ToolDevAppName, any>): string {
   return "partial";
 }
 
-async function status(config: ToolDevConfig, appName: string | undefined) {
+async function status(config: ToolDevConfig, appName: string | undefined, options: CliOptions = {}) {
   const targets = resolveTargetApps(appName, DEFAULT_START_APPS);
-  if (targets.length === 1) return await inspectAppStatus(config, targets[0]);
+  if (targets.length === 1) return await inspectAppStatus(config, targets[0], options);
 
   const apps = Object.fromEntries(
-    await Promise.all(targets.map(async (target) => [target, await inspectAppStatus(config, target)] as const)),
+    await Promise.all(targets.map(async (target) => [target, await inspectAppStatus(config, target, options)] as const)),
   ) as Record<ToolDevAppName, unknown>;
   return { apps, namespace: config.namespace, status: summarizeStatus(apps) };
 }
@@ -931,7 +949,7 @@ addPortOptions(addSharedOptions(cli.command("run [app]", "Start apps and keep th
 
 addSharedOptions(cli.command("status [app]", "Show app status for daemon, web, desktop, or all")).action(
   async (appName: string | undefined, options: CliOptions) => {
-    printStatusResult(await status(resolveToolDevConfig(options), appName), options, appName);
+    printStatusResult(await status(resolveToolDevConfig(options), appName, options), options, appName);
   },
 );
 

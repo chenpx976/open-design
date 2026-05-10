@@ -1124,6 +1124,7 @@ export interface Dict {
   'tool.in': string;
   'tool.hide': string;
   'tool.output': string;
+  'tool.waitingForOutput': string;
   'tool.running': string;
   'tool.error': string;
   'tool.done': string;

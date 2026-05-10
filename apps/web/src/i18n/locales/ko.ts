@@ -899,6 +899,7 @@ export const ko: Dict = {
   'tool.in': '경로: {path}',
   'tool.hide': '숨기기',
   'tool.output': '출력',
+  'tool.waitingForOutput': 'waiting for output…',
   'tool.running': '실행 중…',
   'tool.error': '오류',
   'tool.done': '완료',
