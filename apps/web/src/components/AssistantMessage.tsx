@@ -67,6 +67,7 @@ export function AssistantMessage({
   const t = useT();
   const events = message.events ?? [];
   const blocks = buildBlocks(events);
+  const hasWorkBlocks = blocks.some((b) => b.kind !== "status");
   const usage = events.find((e) => e.kind === "usage") as
     | Extract<AgentEvent, { kind: "usage" }>
     | undefined;
@@ -91,7 +92,7 @@ export function AssistantMessage({
         <MessageTimestamp message={message} t={t} />
       </div>
       <div className="assistant-flow">
-        {blocks.length === 0 && streaming ? (
+        {streaming && !hasWorkBlocks ? (
           <WaitingPill
             startedAt={message.startedAt}
             latestStatus={latestStatusLabel(events)}
@@ -130,7 +131,7 @@ export function AssistantMessage({
               />
             );
           }
-          if (b.kind === "status")
+          if (b.kind === "status" && hasWorkBlocks)
             return <StatusPill key={i} label={b.label} detail={b.detail} />;
           return null;
         })}

@@ -1021,6 +1021,19 @@ function renderLocaleInstruction(locale) {
   ].join('\n');
 }
 
+function renderAutonomousTemplateInstruction({ metadata, skillId }) {
+  if (!metadata || metadata.kind !== 'template' || typeof skillId !== 'string' || !skillId) {
+    return '';
+  }
+  return [
+    '# Template/example fast path',
+    'This project was created from an Open Design template or example prompt. Treat the user prompt as an instruction to build now.',
+    'Do not ask follow-up questions, do not emit <question-form>, and do not wait for user input.',
+    'Pick sensible defaults from the skill, metadata, and prompt; then use the project file tools to create the requested single artifact.',
+    'Show progress with thinking/tool events and write the final HTML into the project directory.',
+  ].join('\n');
+}
+
 const CLOUDFLARE_PAGES_PROJECT_METADATA_KEY = 'cloudflarePagesProjectName';
 
 function cloudflarePagesDeploymentMetadata(projectName) {
@@ -5234,6 +5247,10 @@ export async function startServer({
     const runtimeToolPrompt = createAgentRuntimeToolPrompt(daemonUrl, toolTokenGrant);
     const commentHint = renderCommentAttachmentHint(safeCommentAttachments);
     const localeInstruction = renderLocaleInstruction(locale);
+    const autonomousTemplateInstruction = renderAutonomousTemplateInstruction({
+      metadata: projectRecord?.metadata,
+      skillId,
+    });
 
     const { prompt: daemonSystemPrompt, activeSkillDir, critiqueShouldRun } =
       await composeDaemonSystemPrompt({
@@ -5316,7 +5333,7 @@ export async function startServer({
       research,
       message,
     );
-    const clientInstructionPrompt = [researchCommandContract, systemPrompt]
+    const clientInstructionPrompt = [autonomousTemplateInstruction, researchCommandContract, systemPrompt]
       .map((part) => (typeof part === 'string' ? part.trim() : ''))
       .filter(Boolean)
       .join('\n\n---\n\n');

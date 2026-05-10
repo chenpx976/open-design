@@ -132,6 +132,25 @@ describe('AssistantMessage unfinished todo state', () => {
     expect(screen.getByText('waiting for output…')).toBeTruthy();
   });
 
+  it('shows a first-output waiting state while only status events exist', () => {
+    render(
+      <AssistantMessage
+        message={messageWithEvents([
+          { kind: 'status', label: 'initializing', detail: 'openai-codex/gpt-5.5' },
+          { kind: 'status', label: 'working' },
+          { kind: 'status', label: 'thinking' },
+        ])}
+        streaming
+        projectId="project-1"
+        isLast
+      />,
+    );
+
+    expect(screen.getByText('Thinking')).toBeTruthy();
+    expect(screen.getByText('Working')).toBeTruthy();
+    expect(screen.queryByText('working')).toBeNull();
+  });
+
   it('uses the latest cumulative tool result for a repeated tool id', () => {
     render(
       <AssistantMessage
