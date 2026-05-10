@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ToolCard } from "./ToolCard";
 import { renderMarkdown } from "../runtime/markdown";
 import { projectFileUrl } from "../providers/registry";
@@ -447,6 +447,7 @@ function ProseBlock({
 }) {
   const cleaned = useMemo(() => stripArtifact(text), [text]);
   const segments = useMemo(() => splitOnQuestionForms(cleaned), [cleaned]);
+  const streamedFormCacheRef = useRef(new Map<string, QuestionForm>());
   // Each text segment is further split on `<system-reminder>` blocks so
   // those render as their own collapsible chip instead of raw markup.
   const renderable = segments.flatMap(
@@ -460,11 +461,18 @@ function ProseBlock({
       | { key: string; kind: "pending-form"; id: string; title: string; description?: string }
     > => {
       if (seg.kind === "form") {
-        return [{ key: `f-${idx}`, kind: "form", form: seg.form }];
+        const cached = streamedFormCacheRef.current.get(seg.form.id);
+        const form = preferMoreCompleteForm(cached, seg.form);
+        streamedFormCacheRef.current.set(form.id, form);
+        return [{ key: `qf-${form.id}`, kind: "form", form }];
       }
       if (seg.kind === "pending-form") {
+        const cached = streamedFormCacheRef.current.get(seg.id);
+        if (cached) {
+          return [{ key: `qf-${cached.id}`, kind: "form", form: cached }];
+        }
         return [{
-          key: `pf-${idx}`,
+          key: `qf-${seg.id}`,
           kind: "pending-form",
           id: seg.id,
           title: seg.title,
@@ -513,6 +521,29 @@ function ProseBlock({
       })}
     </div>
   );
+}
+
+function preferMoreCompleteForm(
+  previous: QuestionForm | undefined,
+  next: QuestionForm
+): QuestionForm {
+  if (!previous) return next;
+  if (formCompletenessScore(next) >= formCompletenessScore(previous)) return next;
+  return previous;
+}
+
+function formCompletenessScore(form: QuestionForm): number {
+  let score = form.title.length + (form.description?.length ?? 0);
+  for (const q of form.questions) {
+    score += 100 + q.id.length + q.label.length;
+    score += (q.options?.length ?? 0) * 10;
+    score += (q.cards?.length ?? 0) * 40;
+    for (const card of q.cards ?? []) {
+      score += card.id.length + card.label.length + card.mood.length;
+      score += card.palette.length * 4 + card.references.length * 4;
+    }
+  }
+  return score;
 }
 
 function PendingQuestionForm({

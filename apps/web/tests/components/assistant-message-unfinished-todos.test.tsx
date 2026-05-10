@@ -225,4 +225,51 @@ describe('AssistantMessage unfinished todo state', () => {
     expect(screen.getByText('index.html')).toBeTruthy();
     expect(screen.getByText('styles.css')).toBeTruthy();
   });
+
+  it('keeps streamed question-form nodes stable across partial JSON repair frames', () => {
+    const firstFrame =
+      '<question-form id="direction" title="选择视觉方向">{"questions":[{"id":"direction","label":"视觉方向","type":"direction-cards","options":["editorial","studio"],"cards":[{"id":"editorial","label":"编辑感","mood":"克制、内容优先","references":["Monocle"],"palette":["#111111","#f4efe6"],"displayFont":"Georgia, serif","bodyFont":"Inter, sans-serif"},{"id":"studio","label":"';
+    const regressedFrame =
+      '<question-form id="direction" title="选择视觉方向">{"questions":[{"id":"direction","label":"视觉方向","type":"direction-cards","options":["editorial","studio"],"cards":[';
+    const secondFrame =
+      '<question-form id="direction" title="选择视觉方向">{"questions":[{"id":"direction","label":"视觉方向","type":"direction-cards","options":["editorial","studio"],"cards":[{"id":"editorial","label":"编辑感","mood":"克制、内容优先","references":["Monocle"],"palette":["#111111","#f4efe6"],"displayFont":"Georgia, serif","bodyFont":"Inter, sans-serif"},{"id":"studio","label":"现代极简","mood":"安静、精确","references":["Linear"],"palette":["#0f1115","#2f6feb"],"displayFont":"Inter, sans-serif","bodyFont":"Inter, sans-serif"}]}]}';
+
+    const { container, rerender } = render(
+      <AssistantMessage
+        message={messageWithEvents([{ kind: 'text', text: firstFrame }])}
+        streaming
+        projectId="project-1"
+        isLast
+      />,
+    );
+
+    const firstNode = container.querySelector('.question-form');
+    expect(firstNode).not.toBeNull();
+    expect(screen.getByText('编辑感')).toBeTruthy();
+
+    rerender(
+      <AssistantMessage
+        message={messageWithEvents([{ kind: 'text', text: regressedFrame }])}
+        streaming
+        projectId="project-1"
+        isLast
+      />,
+    );
+
+    expect(container.querySelector('.question-form')).toBe(firstNode);
+    expect(screen.getByText('编辑感')).toBeTruthy();
+
+    rerender(
+      <AssistantMessage
+        message={messageWithEvents([{ kind: 'text', text: secondFrame }])}
+        streaming
+        projectId="project-1"
+        isLast
+      />,
+    );
+
+    expect(container.querySelector('.question-form')).toBe(firstNode);
+    expect(screen.getByText('编辑感')).toBeTruthy();
+    expect(screen.getByText('现代极简')).toBeTruthy();
+  });
 });
