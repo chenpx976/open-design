@@ -206,6 +206,30 @@ describe('runPiSdkAgent contract', () => {
     await expect(access(outsidePath)).rejects.toThrow();
   });
 
+  it('rewrites repo skill paths to staged project skill aliases', async () => {
+    const { runPiSdkAgent } = await import('../src/pi-sdk-agent.js');
+
+    await mkdir(path.join(cwd, '.od-skills', 'html-ppt', 'references'), { recursive: true });
+    await writeFile(path.join(cwd, '.od-skills', 'html-ppt', 'SKILL.md'), 'master', 'utf8');
+    await writeFile(path.join(cwd, '.od-skills', 'html-ppt', 'references', 'full-decks.md'), 'deck refs', 'utf8');
+
+    await runPiSdkAgent({
+      cwd,
+      prompt: 'read skill',
+      model: 'default',
+      reasoning: 'default',
+      signal: undefined,
+      send: () => {},
+    });
+
+    const call = mockState.createAgentSessionCalls[0];
+    const readTool = call.customTools.find((tool: any) => tool.name === 'read');
+    expect(readTool).toBeTruthy();
+
+    await expect(readTool.def.operations.readFile('/repo/skills/html-ppt/SKILL.md')).resolves.toEqual(Buffer.from('master'));
+    await expect(readTool.def.operations.readFile('../../../skills/html-ppt/references/full-decks.md')).resolves.toEqual(Buffer.from('deck refs'));
+  });
+
   it('binds just-bash to the local ProjectFs root and normalizes escaped cwd', async () => {
     const { runPiSdkAgent } = await import('../src/pi-sdk-agent.js');
 

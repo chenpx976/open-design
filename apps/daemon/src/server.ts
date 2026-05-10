@@ -5239,6 +5239,19 @@ export async function startServer({
           `[od] skill-stage skipped: ${result.reason ?? 'unknown reason'}; falling back to absolute paths`,
         );
       }
+      for (const siblingSkillDir of await listReferencedSkillDirs(activeSkillDir)) {
+        const siblingResult = await stageActiveSkill(
+          cwd,
+          path.basename(siblingSkillDir),
+          siblingSkillDir,
+          (msg) => console.warn(msg),
+        );
+        if (!siblingResult.staged) {
+          console.warn(
+            `[od] skill-stage skipped referenced skill ${siblingSkillDir}: ${siblingResult.reason ?? 'unknown reason'}`,
+          );
+        }
+      }
     }
     // Resolve the agent's effective working directory once and use it
     // everywhere the agent could read it (buildArgs runtimeContext, spawn
@@ -6640,6 +6653,31 @@ function assembleExample(templateHtml, slidesHtml, title) {
       /<title>.*?<\/title>/,
       `<title>${title} | Open Design Example</title>`,
     );
+}
+
+async function listReferencedSkillDirs(activeSkillDir) {
+  if (typeof activeSkillDir !== 'string' || !activeSkillDir) return [];
+  let body = '';
+  try {
+    body = await fs.promises.readFile(path.join(activeSkillDir, 'SKILL.md'), 'utf8');
+  } catch {
+    return [];
+  }
+  const dirs = new Set();
+  const parent = path.dirname(activeSkillDir);
+  for (const match of body.matchAll(/\.\.\/([A-Za-z0-9._-]+)\//g)) {
+    const dir = path.resolve(parent, match[1]);
+    if (dir !== activeSkillDir && dir.startsWith(SKILLS_DIR + path.sep) && fs.existsSync(dir)) {
+      dirs.add(dir);
+    }
+  }
+  for (const match of body.matchAll(/\bskills\/([A-Za-z0-9._-]+)\//g)) {
+    const dir = path.resolve(SKILLS_DIR, match[1]);
+    if (dir !== activeSkillDir && dir.startsWith(SKILLS_DIR + path.sep) && fs.existsSync(dir)) {
+      dirs.add(dir);
+    }
+  }
+  return Array.from(dirs);
 }
 
 // Skill example HTML often references shipped images via relative paths

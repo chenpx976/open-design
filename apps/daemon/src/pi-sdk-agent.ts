@@ -123,12 +123,36 @@ function resolveProjectToolPath(projectFs, cwd, absolutePath) {
   const raw = typeof absolutePath === 'string' && absolutePath.trim()
     ? absolutePath.trim()
     : cwd || projectFs.root;
+  const skillAlias = normalizeSkillAliasPath(raw);
+  if (skillAlias) return projectFs.resolvePath(skillAlias);
   if (path.isAbsolute(raw)) {
     const resolved = path.resolve(raw);
     if (projectFs.contains(resolved)) return resolved;
     throw new ProjectToolPathError();
   }
   return projectFs.resolvePath(raw);
+}
+
+function normalizeSkillAliasPath(raw) {
+  const normalized = String(raw || '').replace(/\\/g, '/');
+  const skillsMatch = /(?:^|\/)skills\/([^/]+)(\/.*)?$/.exec(normalized);
+  if (skillsMatch) {
+    return `.od-skills/${skillsMatch[1]}${skillsMatch[2] || ''}`;
+  }
+  const parentSkillMatch = /(?:^|\/)\.\.\/([^/]+)(\/.*)?$/.exec(normalized);
+  if (parentSkillMatch && parentSkillMatch[2]?.startsWith('/SKILL.md')) {
+    return `.od-skills/${parentSkillMatch[1]}${parentSkillMatch[2]}`;
+  }
+  if (parentSkillMatch && parentSkillMatch[2]?.startsWith('/references/')) {
+    return `.od-skills/${parentSkillMatch[1]}${parentSkillMatch[2]}`;
+  }
+  if (parentSkillMatch && parentSkillMatch[2]?.startsWith('/assets/')) {
+    return `.od-skills/${parentSkillMatch[1]}${parentSkillMatch[2]}`;
+  }
+  if (parentSkillMatch && parentSkillMatch[2]?.startsWith('/templates/')) {
+    return `.od-skills/${parentSkillMatch[1]}${parentSkillMatch[2]}`;
+  }
+  return null;
 }
 
 async function wrapProjectFileOperation(projectFs, target, operation) {
