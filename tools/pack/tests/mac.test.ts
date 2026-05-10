@@ -100,7 +100,7 @@ describe("seedPackagedAppConfig", () => {
       await mkdir(sourceDir, { recursive: true });
       await writeFile(
         join(sourceDir, "app-config.json"),
-        `${JSON.stringify({ onboardingCompleted: true, agentId: "codex", agentCliEnv: { codex: { CODEX_BIN: "/Applications/Codex.app/Contents/Resources/codex" } } }, null, 2)}\n`,
+        `${JSON.stringify({ onboardingCompleted: true, agentId: "pi" }, null, 2)}\n`,
         "utf8",
       );
 

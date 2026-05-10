@@ -162,7 +162,6 @@ const baseConfig: AppConfig = {
   onboardingCompleted: true,
   mediaProviders: {},
   agentModels: {},
-  agentCliEnv: {},
 };
 
 describe('App media provider sync flows', () => {

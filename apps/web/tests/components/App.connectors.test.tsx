@@ -166,7 +166,6 @@ const baseConfig: AppConfig = {
   mediaProviders: {},
   composio: {},
   agentModels: {},
-  agentCliEnv: {},
 };
 
 describe('App connectors settings flows', () => {

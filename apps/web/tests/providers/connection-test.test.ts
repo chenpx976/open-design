@@ -120,9 +120,6 @@ describe('testAgent', () => {
       agentId: 'devin',
       model: 'sonnet',
       reasoning: 'high',
-      agentCliEnv: {
-        codex: { CODEX_HOME: '~/.codex-alt' },
-      },
     });
 
     expect(result.kind).toBe('agent_not_installed');
@@ -133,9 +130,6 @@ describe('testAgent', () => {
       agentId: 'devin',
       model: 'sonnet',
       reasoning: 'high',
-      agentCliEnv: {
-        codex: { CODEX_HOME: '~/.codex-alt' },
-      },
     });
   });
 });

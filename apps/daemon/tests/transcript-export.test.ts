@@ -1,8 +1,8 @@
 // Persisted event shape under test is `PersistedAgentEvent` from
 // packages/contracts/src/api/chat.ts (the discriminator is `kind`, the
-// thinking field is `text`). The daemon's claude-stream emits a different
-// `type:`-shaped wire format — those events are translated to the persisted
-// `kind:` shape by the web client before being PUT back for storage.
+// thinking field is `text`). The daemon emits a different `type:`-shaped Pi
+// event stream — those events are translated to the persisted `kind:` shape
+// by the web client before being PUT back for storage.
 //
 // All seeded events here mirror the canonical persisted shape, exactly as
 // they appear in `messages.events_json` in production databases.

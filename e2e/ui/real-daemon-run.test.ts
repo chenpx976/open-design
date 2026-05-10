@@ -23,7 +23,6 @@ test.beforeEach(async ({ page }) => {
         designSystemId: null,
         onboardingCompleted: true,
         agentModels: { pi: { model: 'default', reasoning: 'default' } },
-        agentCliEnv: {},
       }),
     );
   }, { key: STORAGE_KEY });
@@ -138,7 +137,6 @@ async function resetDaemonAppConfig(page: Page) {
       onboardingCompleted: true,
       agentId: 'pi',
       agentModels: { pi: { model: 'default', reasoning: 'default' } },
-      agentCliEnv: {},
       skillId: null,
       designSystemId: null,
     },

@@ -16,8 +16,6 @@ export interface AgentModelPrefs {
   reasoning?: string;
 }
 
-export type AgentCliEnvPrefs = Record<string, Record<string, string>>;
-
 export interface TelemetryPrefs {
   metrics?: boolean;
   content?: boolean;
@@ -34,7 +32,6 @@ export interface AppConfigPrefs {
   onboardingCompleted?: boolean;
   agentId?: string | null;
   agentModels?: Record<string, AgentModelPrefs>;
-  agentCliEnv?: AgentCliEnvPrefs;
   skillId?: string | null;
   designSystemId?: string | null;
   disabledSkills?: string[];
@@ -49,7 +46,6 @@ const ALLOWED_KEYS: ReadonlySet<keyof AppConfigPrefs> = new Set([
   'onboardingCompleted',
   'agentId',
   'agentModels',
-  'agentCliEnv',
   'skillId',
   'designSystemId',
   'disabledSkills',
@@ -84,8 +80,6 @@ function validateTelemetry(raw: unknown): TelemetryPrefs | undefined {
   return Object.keys(result).length > 0 ? (result as TelemetryPrefs) : undefined;
 }
 
-const AGENT_CLI_ENV_KEYS: ReadonlyMap<string, ReadonlySet<string>> = new Map();
-
 function isValidAgentModelEntry(v: unknown): v is AgentModelPrefs {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
   const obj = v as Record<string, unknown>;
@@ -107,29 +101,6 @@ function validateAgentModels(
     if (isValidAgentModelEntry(v)) {
       result[k] = v;
     }
-  }
-  return Object.keys(result).length > 0 ? result : undefined;
-}
-
-export function validateAgentCliEnv(raw: unknown): AgentCliEnvPrefs | undefined {
-  if (raw === undefined || raw === null) return undefined;
-  if (typeof raw !== 'object' || Array.isArray(raw)) return undefined;
-  const result: AgentCliEnvPrefs = Object.create(null);
-  for (const [agentId, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (agentId === '__proto__' || agentId === 'constructor') continue;
-    const allowed = AGENT_CLI_ENV_KEYS.get(agentId);
-    if (!allowed || typeof value !== 'object' || value === null || Array.isArray(value)) {
-      continue;
-    }
-    const env: Record<string, string> = Object.create(null);
-    for (const [envKey, envValue] of Object.entries(value as Record<string, unknown>)) {
-      if (!allowed.has(envKey)) continue;
-      if (typeof envValue !== 'string') continue;
-      const trimmed = envValue.trim();
-      if (!trimmed) continue;
-      env[envKey] = trimmed;
-    }
-    if (Object.keys(env).length > 0) result[agentId] = env;
   }
   return Object.keys(result).length > 0 ? result : undefined;
 }
@@ -161,16 +132,6 @@ function validateOrbit(raw: unknown): OrbitConfigPrefs | undefined {
   return orbit;
 }
 
-export function agentCliEnvForAgent(
-  prefs: AgentCliEnvPrefs | undefined,
-  agentId: string,
-): Record<string, string> {
-  if (!prefs || typeof agentId !== 'string') return {};
-  const env = prefs[agentId];
-  if (!env || typeof env !== 'object' || Array.isArray(env)) return {};
-  return { ...env };
-}
-
 function applyConfigValue(
   target: Record<string, unknown>,
   key: keyof AppConfigPrefs,
@@ -186,14 +147,6 @@ function applyConfigValue(
   }
   if (key === 'agentModels') {
     const validated = validateAgentModels(value);
-    if (validated !== undefined) {
-      target[key] = validated;
-    } else {
-      delete target[key];
-    }
-  }
-  if (key === 'agentCliEnv') {
-    const validated = validateAgentCliEnv(value);
     if (validated !== undefined) {
       target[key] = validated;
     } else {

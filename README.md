@@ -279,11 +279,11 @@ Every layer is composable. Every layer is a file you can edit. Read [`apps/daemo
    │  optional: sidecar IPC at /tmp/open-design/ipc/<ns>/<app>.sock
    │  (STATUS · EVAL · SCREENSHOT · CONSOLE · CLICK · SHUTDOWN)
    └─────────┬────────────────────────┘
-             │ spawn(cli, [...], { cwd: .od/projects/<id> })
+             │ AgentRuntime.run({ cwd: .od/projects/<id> })
              ▼
    ┌──────────────────────────────────────────────────────────────────┐
-   │  claude · codex · devin (ACP) · gemini · opencode · cursor-agent │
-   │  qwen · qoder · copilot · hermes (ACP) · kimi (ACP) · pi (RPC) · kiro (ACP) · kilo (ACP) · vibe (ACP) · deepseek  │
+   │  Pi SDK session · bounded ProjectFs · just-bash · artifact watch │
+   │  thinking + tool_use + tool_result + files stream back over SSE   │
    │  reads SKILL.md + DESIGN.md, writes artifacts to disk            │
    └──────────────────────────────────────────────────────────────────┘
 ```
@@ -720,7 +720,7 @@ open-design/
 │   ├── spec.md                    ← product spec, scenarios, differentiation
 │   ├── architecture.md            ← topologies, data flow, components
 │   ├── skills-protocol.md         ← extended SKILL.md od: frontmatter
-│   ├── agent-adapters.md          ← per-CLI detection + dispatch
+│   ├── agent-runtime.md          ← Pi SDK runtime + worker boundary
 │   ├── modes.md                   ← prototype / deck / template / design-system
 │   ├── references.md              ← long-form provenance
 │   ├── roadmap.md                 ← phased delivery
@@ -782,7 +782,7 @@ Full spec → [`apps/daemon/src/prompts/directions.ts`](apps/daemon/src/prompts/
 
 ## Media generation
 
-OD doesn't stop at code. The same chat surface that produces `<artifact>` HTML also drives **image**, **video**, and **audio** generation, with model adapters wired into the daemon's media pipeline ([`apps/daemon/src/media-models.ts`](apps/daemon/src/media-models.ts), [`apps/web/src/media/models.ts`](apps/web/src/media/models.ts)). Every render lands as a real file in the project workspace — `.png` for image, `.mp4` for video — and shows up as a download chip when the turn ends.
+OD doesn't stop at code. The same chat surface that produces `<artifact>` HTML also drives **image**, **video**, and **audio** generation, with provider model definitions wired into the daemon's media pipeline ([`apps/daemon/src/media-models.ts`](apps/daemon/src/media-models.ts), [`apps/web/src/media/models.ts`](apps/web/src/media/models.ts)). Every render lands as a real file in the project workspace — `.png` for image, `.mp4` for video — and shows up as a download chip when the turn ends.
 
 Three model families carry the load today:
 
@@ -884,7 +884,7 @@ The whole machinery below is the [`huashu-design`](https://github.com/alchaincyf
 | License | Closed | MIT | **Apache-2.0** |
 | Form factor | Web (claude.ai) | Desktop (Electron) | **Web app + local daemon** |
 | Deployable on Vercel | ❌ | ❌ | **✅** |
-| Agent runtime | Bundled (Opus 4.7) | Bundled ([`pi-ai`][piai]) | **Delegated to user's existing CLI** |
+| Agent runtime | Bundled (Opus 4.7) | Bundled ([`pi-ai`][piai]) | **Daemon-hosted Pi SDK + worker runtime** |
 | Skills | Proprietary | 12 custom TS modules + `SKILL.md` | **31 file-based [`SKILL.md`][skill] bundles, droppable** |
 | Design system | Proprietary | `DESIGN.md` (v0.2 roadmap) | **`DESIGN.md` × 129 systems shipped** |
 | Provider flexibility | Anthropic only | 7+ via [`pi-ai`][piai] | **Pi SDK model registry + OpenAI-compatible BYOK proxy** |
@@ -978,7 +978,7 @@ If this saved you thirty minutes — give it a ★. Stars don't pay rent, but th
 
 ## Contributing
 
-Issues, PRs, new skills, and new design systems are all welcome. The highest-leverage contributions are usually one folder, one Markdown file, or one PR-sized adapter:
+Issues, PRs, new skills, and new design systems are all welcome. The highest-leverage contributions are usually one focused folder, one Markdown file, or one small runtime/provider improvement:
 
 - **Add a skill** — drop a folder into [`skills/`](skills/) following the [`SKILL.md`][skill] convention.
 - **Add a design system** — drop a `DESIGN.md` into [`design-systems/<brand>/`](design-systems/) using the 9-section schema.

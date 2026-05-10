@@ -111,6 +111,24 @@ recovered after `OD_AGENT_WORKER_LEASE_MS`, and long-running jobs are aborted
 after `OD_AGENT_WORKER_MAX_JOB_MS`. Failed jobs requeue until
 `OD_AGENT_WORKER_MAX_ATTEMPTS` is reached, then the run is marked failed.
 
+Operational checks:
+
+```bash
+docker compose --profile worker logs -f agent-worker
+docker compose --profile worker exec redis redis-cli llen open-design:agent-jobs:queued
+docker compose --profile worker exec redis redis-cli zcard open-design:agent-jobs:running
+docker compose --profile worker exec postgres psql -U open_design -d open_design -c "select run_id,event,payload_json from agent_run_events order by id desc limit 20;"
+```
+
+Expected semantics:
+
+- `queued` depth falls back to `0` after the worker claims a job.
+- `running` falls back to `0` after the worker acknowledges success/failure.
+- Successful runs have `start`, one or more `agent`, and `end` events in
+  Postgres, with the Redis job hash ending at `status=succeeded`.
+- Failed runs keep the error in the job hash until cleanup and write a terminal
+  Postgres `end` event with `status: "failed"`.
+
 ## Postgres Run Store
 
 Use Postgres when more than one API replica needs to recover runs, stream

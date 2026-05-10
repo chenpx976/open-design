@@ -18,7 +18,6 @@ import {
 import { expandHomePrefix, resolveProjectRelativePath } from './home-expansion.js';
 import { SIDECAR_DEFAULTS, SIDECAR_ENV } from '@open-design/sidecar-proto';
 import {
-  buildLiveArtifactsMcpServersForAgent,
   detectAgents,
   getAgentDef,
   isKnownModel,
@@ -32,18 +31,13 @@ import { buildWindowsFolderDialogCommand, parseFolderDialogStdout } from './nati
 import { listCodexPets, readCodexPetSpritesheet } from './codex-pets.js';
 import { syncCommunityPets } from './community-pets-sync.js';
 import { listDesignSystems, readDesignSystem } from './design-systems.js';
-import { attachAcpSession } from './acp.js';
 import { createAgentRuntimeFromEnv } from './agent-runtime.js';
 import { createLocalProjectFs, describeProjectFsForPrompt } from './project-fs.js';
-import { createClaudeStreamHandler } from './claude-stream.js';
 import { loadCritiqueConfigFromEnv } from './critique/config.js';
 import { reconcileStaleRuns } from './critique/persistence.js';
 import { runOrchestrator } from './critique/orchestrator.js';
 import { createRunRegistry } from './critique/run-registry.js';
 import { handleCritiqueInterrupt } from './critique/interrupt-handler.js';
-import { createCopilotStreamHandler } from './copilot-stream.js';
-import { createJsonEventStreamHandler } from './json-event-stream.js';
-import { createQoderStreamHandler } from './qoder-stream.js';
 import { subscribe as subscribeFileEvents } from './project-watchers.js';
 import { renderDesignSystemPreview } from './design-system-preview.js';
 import { renderDesignSystemShowcase } from './design-system-showcase.js';
@@ -91,28 +85,7 @@ import {
   reconcileMediaTasksOnBoot,
   updateMediaTask,
 } from './media-tasks.js';
-import {
-  MCP_TEMPLATES,
-  buildAcpMcpServers,
-  buildClaudeMcpJson,
-  isManagedProjectCwd,
-  readMcpConfig,
-  writeMcpConfig,
-} from './mcp-config.js';
-import {
-  beginAuth,
-  exchangeCodeForToken,
-  PendingAuthCache,
-  refreshAccessToken,
-} from './mcp-oauth.js';
-import {
-  clearToken,
-  getToken,
-  isTokenExpired,
-  readAllTokens,
-  setToken,
-} from './mcp-tokens.js';
-import { agentCliEnvForAgent, readAppConfig, writeAppConfig } from './app-config.js';
+import { readAppConfig, writeAppConfig } from './app-config.js';
 import { OrbitService, formatLocalProjectTimestamp, renderOrbitTemplateSystemPrompt } from './orbit.js';
 import {
   RoutineService,
@@ -844,84 +817,6 @@ for (const dir of [USER_SKILLS_DIR, USER_DESIGN_SYSTEMS_DIR]) {
 const orbitService = new OrbitService(RUNTIME_DATA_DIR);
 let routineService = null;
 
-// In-memory OAuth state cache. Lives for the daemon process's lifetime.
-// Maps the OAuth `state` parameter we generated in /api/mcp/oauth/start
-// to the verifier + endpoint info needed to finish the exchange when the
-// browser hits /api/mcp/oauth/callback.
-const mcpPendingAuth = new PendingAuthCache();
-
-/**
- * Resolve the daemon's public base URL — the origin the user's browser
- * (or the OAuth provider) reaches us at. Order of precedence:
- *
- *   1. `OD_PUBLIC_BASE_URL` env var. Cloud and packaged-electron deployments
- *      set this to the externally-routable URL (e.g. `https://app.example.com`).
- *   2. `req.protocol://req.get('host')` from the inbound request. Works in
- *      local dev and most reverse-proxy setups (Express respects
- *      `trust proxy` so X-Forwarded-* headers are honored).
- *
- * The OAuth callback URI is derived from this — it MUST be reachable from
- * the user's browser, otherwise the redirect after auth lands on
- * ERR_CONNECTION_REFUSED. Misconfiguration is loud: the OAuth provider
- * will reject `redirect_uri` mismatches.
- */
-function getPublicBaseUrl(req) {
-  const env = process.env.OD_PUBLIC_BASE_URL;
-  if (env && /^https?:\/\//i.test(env)) {
-    return env.replace(/\/+$/u, '');
-  }
-  const proto = req.protocol || 'http';
-  const host = req.get('host');
-  if (!host) return `http://localhost:${process.env.OD_PORT ?? '7456'}`;
-  return `${proto}://${host}`;
-}
-
-function mcpOAuthCallbackUrl(req) {
-  return `${getPublicBaseUrl(req)}/api/mcp/oauth/callback`;
-}
-
-/**
- * Refresh an expired token using the OAuth client context that the original
- * authorization-code exchange persisted alongside the token. Refresh tokens
- * are bound (RFC 6749 §6) to the client that received them, so we MUST
- * refresh against the same `tokenEndpoint` / `clientId` / `clientSecret`
- * pair — re-running discovery with a different redirect URI would risk
- * registering a new client_id that the upstream then rejects the refresh
- * for. Tokens persisted before that context was recorded can't be safely
- * refreshed; the caller treats `null` as "needs reconnect".
- */
-async function refreshAndPersistToken(dataDir, serverId, current) {
-  if (!current.refreshToken) return null;
-  if (!current.tokenEndpoint || !current.clientId) return null;
-  const tokenResp = await refreshAccessToken({
-    tokenEndpoint: current.tokenEndpoint,
-    clientId: current.clientId,
-    clientSecret: current.clientSecret,
-    refreshToken: current.refreshToken,
-    scope: current.scope,
-    resource: current.resourceUrl,
-  });
-  const next = {
-    accessToken: tokenResp.access_token,
-    refreshToken: tokenResp.refresh_token ?? current.refreshToken,
-    tokenType: tokenResp.token_type ?? 'Bearer',
-    scope: tokenResp.scope ?? current.scope,
-    expiresAt:
-      typeof tokenResp.expires_in === 'number'
-        ? Date.now() + tokenResp.expires_in * 1000
-        : undefined,
-    savedAt: Date.now(),
-    tokenEndpoint: current.tokenEndpoint,
-    clientId: current.clientId,
-    clientSecret: current.clientSecret,
-    authServerIssuer: current.authServerIssuer,
-    redirectUri: current.redirectUri,
-    resourceUrl: current.resourceUrl,
-  };
-  await setToken(dataDir, serverId, next);
-  return next;
-}
-
 const activeChatAgentEventSinks = new Map();
 const activeProjectEventSinks = new Map();
 
@@ -986,11 +881,6 @@ const promptFileBootstrap = (fp) =>
 // surfaces immediately as a boot-time RangeError instead of silently at
 // run time. Default: enabled=false (M0 dark launch).
 const critiqueCfg = loadCritiqueConfigFromEnv();
-// Tracks adapter streamFormat values that have already received a one-time
-// warning explaining why the Critique Theater orchestrator was bypassed.
-// Adapter denylist for orchestrator routing is implicit: anything that is
-// not the 'plain' streamFormat falls through to legacy single-pass.
-const critiqueWarnedAdapters = new Set<string>();
 
 // In-process registry of in-flight critique runs so the interrupt endpoint
 // can cascade an AbortController to the matching orchestrator invocation.
@@ -1367,86 +1257,6 @@ function requireLocalDaemonRequest(req, res, next) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Max-Age', '600');
   next();
-}
-
-/**
- * Render the small HTML page that the OAuth callback returns to the
- * user's browser tab. It posts a message back to the opener (the
- * Settings dialog window) and offers a manual close button. We keep
- * the markup pure HTML/CSS — no external scripts, no React — so the
- * page works even if the opener was closed and the user just sees a
- * static success/failure screen.
- */
-function renderOAuthResultPage(opts) {
-  const ok = Boolean(opts.ok);
-  const title = ok ? 'Connected' : 'Authorization failed';
-  const heading = ok ? '✅ Connected' : '⚠️ Authorization failed';
-  const body = ok
-    ? `Your MCP server <code>${escapeHtml(opts.serverId ?? '')}</code> is now connected. You can close this tab and return to Open Design.`
-    : escapeHtml(opts.message ?? 'Authorization could not be completed.');
-  const accent = ok ? '#1a7f37' : '#cf222e';
-  const payload = ok
-    ? { type: 'mcp-oauth', ok: true, serverId: opts.serverId ?? null }
-    : { type: 'mcp-oauth', ok: false, message: opts.message ?? null };
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>${escapeHtml(title)} — Open Design</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<style>
-  :root { color-scheme: light dark; }
-  html, body { height: 100%; margin: 0; }
-  body {
-    display: flex; align-items: center; justify-content: center;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
-    background: #f6f7f9; color: #1f2328; padding: 24px;
-  }
-  @media (prefers-color-scheme: dark) {
-    body { background: #0d1117; color: #e6edf3; }
-    .card { background: #161b22; border-color: #30363d; }
-    code { background: #1f242c; }
-  }
-  .card {
-    max-width: 420px; width: 100%; padding: 28px 28px 22px; border-radius: 12px;
-    background: white; border: 1px solid #d0d7de; box-shadow: 0 8px 24px rgba(0,0,0,.06);
-    text-align: left;
-  }
-  h1 { margin: 0 0 8px; font-size: 18px; color: ${accent}; }
-  p  { margin: 0 0 16px; font-size: 14px; line-height: 1.55; }
-  code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; font-size: 12.5px; }
-  button {
-    appearance: none; border: 1px solid #d0d7de; background: white;
-    border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
-  }
-  button:hover { background: #f6f8fa; }
-  @media (prefers-color-scheme: dark) {
-    button { background: #21262d; border-color: #30363d; color: #e6edf3; }
-    button:hover { background: #30363d; }
-  }
-</style>
-</head>
-<body>
-  <div class="card">
-    <h1>${escapeHtml(heading)}</h1>
-    <p>${body}</p>
-    <button type="button" onclick="window.close()">Close this tab</button>
-  </div>
-  <script>
-    try {
-      var payload = ${JSON.stringify(payload)};
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage(payload, '*');
-      }
-      if (window.BroadcastChannel) {
-        var bc = new BroadcastChannel('open-design-mcp-oauth');
-        bc.postMessage(payload);
-        bc.close();
-      }
-    } catch (e) { /* ignore postMessage failures */ }
-  </script>
-</body>
-</html>`;
 }
 
 function escapeHtml(s) {
@@ -2062,13 +1872,12 @@ export async function startServer({
     console.log('[od] Codex plugins disabled via OD_CODEX_DISABLE_PLUGINS=1');
   }
 
-  // Warm agent-capability probes (e.g. whether the installed Claude Code
-  // build advertises --include-partial-messages) so the first /api/chat
-  // hits a populated cache even if /api/agents hasn't been called yet.
+  // Warm Pi model discovery so the first /api/chat has the same catalog
+  // shape as /api/agents even if the settings dialog has not opened yet.
   void readAppConfig(RUNTIME_DATA_DIR)
     .then((config) => {
       orbitService.configure(config.orbit);
-      return detectAgents(config.agentCliEnv ?? {});
+      return detectAgents();
     })
     .catch(() => detectAgents().catch(() => {}));
 
@@ -2244,210 +2053,6 @@ export async function startServer({
     });
     installInfoCache = { t: now, payload };
     res.json(payload);
-  });
-
-  // External MCP server configuration. Open Design connects to these as a
-  // CLIENT and surfaces their tools to the underlying agent at spawn time.
-  // GET returns user-saved entries plus the built-in template list so the UI
-  // can render the "Add MCP server" picker without a second round-trip.
-  app.get('/api/mcp/servers', async (req, res) => {
-    if (!isLocalSameOrigin(req, resolvedPort)) {
-      return res.status(403).json({ error: 'cross-origin request rejected' });
-    }
-    try {
-      const cfg = await readMcpConfig(RUNTIME_DATA_DIR);
-      res.json({ servers: cfg.servers, templates: MCP_TEMPLATES });
-    } catch (err) {
-      res
-        .status(500)
-        .json({ error: String(err && err.message ? err.message : err) });
-    }
-  });
-
-  app.put('/api/mcp/servers', async (req, res) => {
-    if (!isLocalSameOrigin(req, resolvedPort)) {
-      return res.status(403).json({ error: 'cross-origin request rejected' });
-    }
-    try {
-      const cfg = await writeMcpConfig(RUNTIME_DATA_DIR, req.body);
-      res.json({ servers: cfg.servers, templates: MCP_TEMPLATES });
-    } catch (err) {
-      res
-        .status(400)
-        .json({ error: String(err && err.message ? err.message : err) });
-    }
-  });
-
-  // ─────────────────────────────────────────────────────────────────
-  // External MCP server OAuth — daemon-owned authorization flow.
-  //
-  // Replaces per-spawn `mcp-remote` subprocesses. The token is stored
-  // server-side in <dataDir>/mcp-tokens.json and injected as a Bearer
-  // header into the `.mcp.json` we write for Claude Code at spawn time.
-  // The redirect URI points at THIS daemon's public origin so the flow
-  // works the same in local dev (loopback) and in cloud deployments
-  // where OD_PUBLIC_BASE_URL pins the externally-routable URL.
-  // ─────────────────────────────────────────────────────────────────
-
-  app.post('/api/mcp/oauth/start', async (req, res) => {
-    if (!isLocalSameOrigin(req, resolvedPort)) {
-      return res.status(403).json({ error: 'cross-origin request rejected' });
-    }
-    const serverId =
-      typeof req.body?.serverId === 'string' ? req.body.serverId.trim() : '';
-    if (!serverId) {
-      return res.status(400).json({ error: 'serverId is required' });
-    }
-    try {
-      const cfg = await readMcpConfig(RUNTIME_DATA_DIR);
-      const server = cfg.servers.find((s) => s.id === serverId);
-      if (!server) {
-        return res.status(404).json({ error: `unknown serverId ${serverId}` });
-      }
-      if (server.transport !== 'http' && server.transport !== 'sse') {
-        return res
-          .status(400)
-          .json({ error: 'OAuth flow only applies to http/sse transports' });
-      }
-      if (!server.url) {
-        return res.status(400).json({ error: 'server has no URL configured' });
-      }
-      const redirectUri = mcpOAuthCallbackUrl(req);
-      console.log(
-        `[mcp-oauth] start serverId=${serverId} url=${server.url} redirect=${redirectUri}`,
-      );
-      const result = await beginAuth({
-        serverId,
-        serverUrl: server.url,
-        redirectUri,
-        dataDir: RUNTIME_DATA_DIR,
-        fetchImpl: fetch,
-      });
-      mcpPendingAuth.put(result.state, result.pending);
-      console.log(
-        `[mcp-oauth] start ok serverId=${serverId} authServer=${result.pending.authServerIssuer} clientId=${result.pending.clientId}`,
-      );
-      res.json({
-        authorizeUrl: result.authorizeUrl,
-        state: result.state,
-        redirectUri,
-      });
-    } catch (err) {
-      const msg = err && err.message ? err.message : String(err);
-      console.error(`[mcp-oauth] start failed serverId=${serverId}:`, msg);
-      res.status(502).json({ error: msg });
-    }
-  });
-
-  // Public endpoint — the OAuth provider's user-agent redirect lands here
-  // after the user approves. We deliberately do NOT enforce
-  // isLocalSameOrigin: in cloud the daemon IS the public origin, and even
-  // locally the request comes back from the OAuth provider's redirect
-  // (no Origin header at all on a top-level navigation).
-  app.get('/api/mcp/oauth/callback', async (req, res) => {
-    const code = typeof req.query.code === 'string' ? req.query.code : '';
-    const state = typeof req.query.state === 'string' ? req.query.state : '';
-    const error = typeof req.query.error === 'string' ? req.query.error : '';
-    if (error) {
-      return res.status(400).type('html').send(renderOAuthResultPage({
-        ok: false,
-        message: `Auth provider returned error: ${error}`,
-      }));
-    }
-    if (!code || !state) {
-      return res.status(400).type('html').send(renderOAuthResultPage({
-        ok: false,
-        message: 'Missing code or state — open Settings → External MCP servers and click Connect again.',
-      }));
-    }
-    const pending = mcpPendingAuth.consume(state);
-    if (!pending) {
-      return res.status(400).type('html').send(renderOAuthResultPage({
-        ok: false,
-        message: 'Auth state expired or already used. Click Connect again.',
-      }));
-    }
-    try {
-      const tokenResp = await exchangeCodeForToken({
-        tokenEndpoint: pending.tokenEndpoint,
-        clientId: pending.clientId,
-        clientSecret: pending.clientSecret,
-        redirectUri: pending.redirectUri,
-        code,
-        codeVerifier: pending.codeVerifier,
-        resource: pending.resourceUrl,
-      });
-      const stored = {
-        accessToken: tokenResp.access_token,
-        refreshToken: tokenResp.refresh_token,
-        tokenType: tokenResp.token_type ?? 'Bearer',
-        scope: tokenResp.scope ?? pending.scope,
-        expiresAt:
-          typeof tokenResp.expires_in === 'number'
-            ? Date.now() + tokenResp.expires_in * 1000
-            : undefined,
-        savedAt: Date.now(),
-        // Persist the OAuth client context so refresh-token rotation can
-        // hit the same client_id / token endpoint the upstream issued the
-        // refresh_token to. Refresh tokens are client-bound (RFC 6749 §6).
-        tokenEndpoint: pending.tokenEndpoint,
-        clientId: pending.clientId,
-        clientSecret: pending.clientSecret,
-        authServerIssuer: pending.authServerIssuer,
-        redirectUri: pending.redirectUri,
-        resourceUrl: pending.resourceUrl,
-      };
-      await setToken(RUNTIME_DATA_DIR, pending.serverId, stored);
-      res.type('html').send(renderOAuthResultPage({
-        ok: true,
-        serverId: pending.serverId,
-      }));
-    } catch (err) {
-      console.error(
-        '[mcp-oauth] callback failed:',
-        err && err.message ? err.message : err,
-      );
-      res.status(502).type('html').send(renderOAuthResultPage({
-        ok: false,
-        message: String(err && err.message ? err.message : err),
-      }));
-    }
-  });
-
-  app.get('/api/mcp/oauth/status', async (req, res) => {
-    if (!isLocalSameOrigin(req, resolvedPort)) {
-      return res.status(403).json({ error: 'cross-origin request rejected' });
-    }
-    const serverId =
-      typeof req.query.serverId === 'string' ? req.query.serverId.trim() : '';
-    if (!serverId) return res.status(400).json({ error: 'serverId is required' });
-    try {
-      const tok = await getToken(RUNTIME_DATA_DIR, serverId);
-      if (!tok) return res.json({ connected: false });
-      res.json({
-        connected: true,
-        expiresAt: tok.expiresAt ?? null,
-        scope: tok.scope ?? null,
-        savedAt: tok.savedAt,
-      });
-    } catch (err) {
-      res.status(500).json({ error: String(err && err.message ? err.message : err) });
-    }
-  });
-
-  app.post('/api/mcp/oauth/disconnect', async (req, res) => {
-    if (!isLocalSameOrigin(req, resolvedPort)) {
-      return res.status(403).json({ error: 'cross-origin request rejected' });
-    }
-    const serverId =
-      typeof req.body?.serverId === 'string' ? req.body.serverId.trim() : '';
-    if (!serverId) return res.status(400).json({ error: 'serverId is required' });
-    try {
-      await clearToken(RUNTIME_DATA_DIR, serverId);
-      res.json({ ok: true });
-    } catch (err) {
-      res.status(500).json({ error: String(err && err.message ? err.message : err) });
-    }
   });
 
   app.get('/api/projects', (_req, res) => {
@@ -3145,8 +2750,7 @@ export async function startServer({
 
   app.get('/api/agents', async (_req, res) => {
     try {
-      const config = await readAppConfig(RUNTIME_DATA_DIR);
-      const list = await detectAgents(config.agentCliEnv ?? {});
+      const list = await detectAgents();
       res.json({ agents: list });
     } catch (err) {
       res.status(500).json({ error: String(err) });
@@ -4869,7 +4473,7 @@ export async function startServer({
     let agentId = routine.agentId
       || (typeof appConfig.agentId === 'string' && appConfig.agentId ? appConfig.agentId : null);
     if (!agentId) {
-      const agents = await detectAgents(appConfig.agentCliEnv ?? {}).catch(() => []);
+      const agents = await detectAgents().catch(() => []);
       agentId = agents.find((agent) => agent.available)?.id ?? null;
     }
     if (!agentId) {
@@ -5378,8 +4982,6 @@ export async function startServer({
     projectId,
     skillId,
     designSystemId,
-    streamFormat,
-    connectedExternalMcp,
   }) => {
     const project =
       typeof projectId === 'string' && projectId
@@ -5454,18 +5056,6 @@ export async function startServer({
     const critiqueSkill = critiqueCfg.enabled && typeof effectiveSkillId === 'string'
       ? { id: effectiveSkillId }
       : undefined;
-    // Single-source-of-truth eligibility check. The composer downstream
-    // appends <CRITIQUE_RUN> instructions only when this check passes, and
-    // the spawn path routes runs through runOrchestrator(...) only when the
-    // SAME flag is true, so prompt and orchestrator stay in lockstep.
-    //
-    // Non-plain adapters (claude-stream-json, copilot-stream-json,
-    // json-event-stream, acp-json-rpc, pi-rpc) emit their own wrapper
-    // protocol; the v1 critique parser only understands plain stdout. The
-    // spawn path falls through to legacy generation for those, so the
-    // panel addendum has to be suppressed here too: otherwise the model
-    // is instructed to emit Critique Theater tags that no orchestrator
-    // consumes.
     const isMediaSurface =
       skillMode === 'image' ||
       skillMode === 'video' ||
@@ -5473,18 +5063,14 @@ export async function startServer({
       metadata?.kind === 'image' ||
       metadata?.kind === 'video' ||
       metadata?.kind === 'audio';
-    const isPlainAdapter = (streamFormat ?? 'plain') === 'plain';
-    const critiqueShouldRun = critiqueCfg.enabled
+    // The old critique orchestrator consumed plain stdout from CLI adapters.
+    // Pi SDK runs through structured events, so critique stays disabled until
+    // it is ported to the Pi runtime contract.
+    const critiqueShouldRun = false
+      && critiqueCfg.enabled
       && critiqueBrand !== undefined
       && critiqueSkill !== undefined
-      && !isMediaSurface
-      && isPlainAdapter;
-    // Only thread the critique fields when the run is actually eligible;
-    // otherwise the composer's own internal eligibility check (cfg.enabled
-    // && brand && skill && !isMediaSurface) might still fire on
-    // non-plain adapters and we'd emit the panel for a run the orchestrator
-    // skips. Gating the threading itself keeps composer + orchestrator in
-    // exact lockstep regardless of which side enforces eligibility.
+      && !isMediaSurface;
     const prompt = composeSystemPrompt({
       agentId,
       includeCodexImagegenOverride: false,
@@ -5500,9 +5086,6 @@ export async function startServer({
       critique: critiqueShouldRun ? critiqueCfg : undefined,
       critiqueBrand: critiqueShouldRun ? critiqueBrand : undefined,
       critiqueSkill: critiqueShouldRun ? critiqueSkill : undefined,
-      connectedExternalMcp: Array.isArray(connectedExternalMcp)
-        ? connectedExternalMcp
-        : undefined,
     });
     // The chat handler also needs to know where the active skill lives
     // on disk so it can stage a per-project copy of its side files
@@ -5678,77 +5261,12 @@ export async function startServer({
     const runtimeToolPrompt = createAgentRuntimeToolPrompt(daemonUrl, toolTokenGrant);
     const commentHint = renderCommentAttachmentHint(safeCommentAttachments);
 
-    // Resolve external MCP config + stored OAuth tokens up-front so the
-    // system prompt can warn the model away from Claude Code's synthetic
-    // `*_authenticate` / `*_complete_authentication` tools for any
-    // server the daemon already holds a valid Bearer for. We re-use both
-    // values further down at .mcp.json write time — see the spawn block
-    // below — instead of re-reading.
-    let externalMcpConfig = { servers: [] };
-    try {
-      externalMcpConfig = await readMcpConfig(RUNTIME_DATA_DIR);
-    } catch (err) {
-      console.warn(
-        '[mcp-config] read failed:',
-        err && err.message ? err.message : err,
-      );
-    }
-    const enabledExternalMcp = externalMcpConfig.servers.filter((s) => s.enabled);
-    const oauthTokensForSpawn = {};
-    try {
-      const stored = await readAllTokens(RUNTIME_DATA_DIR);
-      for (const [serverId, tok] of Object.entries(stored)) {
-        if (!enabledExternalMcp.find((s) => s.id === serverId)) continue;
-        // Default to the persisted access token; null it out if expired so
-        // we never inject a stale `Authorization: Bearer …` header. The
-        // model treats a server with a Bearer pinned as connected and
-        // discourages re-auth, which is the worst possible UX when the
-        // token is going to 401 every call.
-        let access = isTokenExpired(tok) ? null : tok.accessToken;
-        if (isTokenExpired(tok) && tok.refreshToken) {
-          try {
-            const refreshed = await refreshAndPersistToken(
-              RUNTIME_DATA_DIR,
-              serverId,
-              tok,
-            );
-            if (refreshed) access = refreshed.accessToken;
-          } catch (err) {
-            console.warn(
-              '[mcp-oauth] refresh failed for',
-              serverId,
-              err && err.message ? err.message : err,
-            );
-          }
-        }
-        if (access) {
-          oauthTokensForSpawn[serverId] = access;
-        } else {
-          console.warn(
-            '[mcp-oauth] skipping expired token for',
-            serverId,
-            '— reconnect required',
-          );
-        }
-      }
-    } catch (err) {
-      console.warn(
-        '[mcp-tokens] read failed:',
-        err && err.message ? err.message : err,
-      );
-    }
-    const connectedExternalMcp = enabledExternalMcp
-      .filter((s) => typeof oauthTokensForSpawn[s.id] === 'string')
-      .map((s) => ({ id: s.id, label: s.label }));
-
     const { prompt: daemonSystemPrompt, activeSkillDir, critiqueShouldRun } =
       await composeDaemonSystemPrompt({
         agentId,
         projectId,
         skillId,
         designSystemId,
-        streamFormat: def?.streamFormat ?? 'plain',
-        connectedExternalMcp,
       });
 
     // Make skill side files reachable through three layers, in order of
@@ -5866,86 +5384,6 @@ export async function startServer({
       typeof reasoning === 'string' && Array.isArray(def.reasoningOptions)
         ? (def.reasoningOptions.find((r) => r.id === reasoning)?.id ?? null)
         : null;
-    const agentOptions = { model: safeModel, reasoning: safeReasoning };
-    const mcpServers = buildLiveArtifactsMcpServersForAgent(def, {
-      enabled: Boolean(toolTokenGrant?.token),
-      command: process.execPath,
-      argsPrefix: [OD_BIN],
-    });
-
-    // External MCP servers configured by the user in Settings → External MCP.
-    // Open Design relays them to the agent so the model can call those tools.
-    // Two delivery shapes today:
-    //   - Claude Code: write a `.mcp.json` into the project cwd. Claude Code
-    //     auto-loads that file at spawn (same format the CLI accepts via
-    //     `claude mcp add` + Claude Desktop's config). Fire-and-forget; we
-    //     deliberately do NOT block spawn on a write failure since the agent
-    //     can still run without external tools — log a warning and continue.
-    //   - ACP agents (Hermes/Kimi): merge stdio entries into the existing
-    //     `mcpServers` array; SSE/HTTP entries are skipped because ACP's
-    //     stdio-only descriptor can't represent them yet.
-    // Other agents (Codex, Gemini, OpenCode, Cursor, Qwen, Qoder, Copilot,
-    // Pi, DeepSeek) inherit the user's per-CLI MCP config from their own
-    // home dir for now — a future change can grow this list.
-    //
-    // The MCP config + OAuth tokens were resolved earlier (above
-    // composeDaemonSystemPrompt) so the system prompt could mention any
-    // already-authenticated servers; we reuse `enabledExternalMcp` and
-    // `oauthTokensForSpawn` here for the Claude `.mcp.json` write +
-    // ACP merge so we don't pay for a second filesystem read.
-    //
-    // Claude Code: write `.mcp.json` to the daemon-managed project cwd before
-    // spawn so Claude Code auto-loads the user's external MCP servers. Strict
-    // gating is essential here:
-    //   - cwd must be set (no project → no `.mcp.json` write).
-    //   - cwd must live UNDER PROJECTS_DIR. We never write to a git-linked
-    //     baseDir (= the user's own repo), since that would silently overwrite
-    //     a hand-crafted .mcp.json the user already keeps in their source tree.
-    // We also unlink a stale `.mcp.json` we previously wrote when the user has
-    // since disabled all servers, so removing a server actually takes effect
-    // on the next run.
-    if (def.id === 'claude' && isManagedProjectCwd(cwd, PROJECTS_DIR)) {
-      {
-        const target = path.join(cwd, '.mcp.json');
-        if (enabledExternalMcp.length > 0) {
-          try {
-            const claudeMcp = buildClaudeMcpJson(
-              enabledExternalMcp,
-              oauthTokensForSpawn,
-            );
-            if (claudeMcp) {
-              await fs.promises.mkdir(path.dirname(target), { recursive: true });
-              await fs.promises.writeFile(
-                target,
-                JSON.stringify(claudeMcp, null, 2),
-                'utf8',
-              );
-            }
-          } catch (err) {
-            console.warn(
-              '[mcp-config] failed to write project .mcp.json:',
-              err && err.message ? err.message : err,
-            );
-          }
-        } else {
-          try {
-            await fs.promises.unlink(target);
-          } catch (err) {
-            if ((err && err.code) !== 'ENOENT') {
-              console.warn(
-                '[mcp-config] failed to remove stale .mcp.json:',
-                err && err.message ? err.message : err,
-              );
-            }
-          }
-        }
-      }
-    }
-    if (enabledExternalMcp.length > 0 && def.streamFormat === 'acp-json-rpc') {
-      const acpExternal = buildAcpMcpServers(enabledExternalMcp);
-      mcpServers.push(...acpExternal);
-    }
-
     const send = (event, data) => design.runs.emit(run, event, data);
     const inactivityTimeoutMs = resolveChatRunInactivityTimeoutMs();
     let inactivityTimer = null;
@@ -5992,7 +5430,7 @@ export async function startServer({
       runId,
       agentId,
       bin: def.bin,
-      streamFormat: def.streamFormat ?? 'plain',
+      runtimeStream: 'pi-sdk',
       runtime: agentRuntime.id,
       runtimeExecutionMode: agentRuntime.executionMode,
       projectId: typeof projectId === 'string' ? projectId : null,
@@ -6003,14 +5441,6 @@ export async function startServer({
     });
     noteAgentActivity();
     await design.runs.flush(run);
-
-    if (critiqueShouldRun) {
-      const adapterStreamFormat: string = def.streamFormat ?? 'pi-sdk';
-      if (!critiqueWarnedAdapters.has(adapterStreamFormat)) {
-        critiqueWarnedAdapters.add(adapterStreamFormat);
-        console.warn(`[critique] adapter format=${adapterStreamFormat} is not stdout-backed; skipping orchestrator and falling through to Pi SDK generation`);
-      }
-    }
 
     let agentStreamError = null;
     let agentProducedOutput = false;
@@ -6127,7 +5557,7 @@ export async function startServer({
       ? appConfig.agentId
       : null;
     if (!agentId) {
-      const agents = await detectAgents(appConfig.agentCliEnv ?? {}).catch(() => []);
+      const agents = await detectAgents().catch(() => []);
       agentId = agents.find((agent) => agent.available)?.id ?? null;
     }
     if (!agentId) throw new Error('No available agent is configured for Orbit. Choose an agent in Settings first.');
@@ -6471,10 +5901,6 @@ export async function startServer({
             agentId: body.agentId,
             model: safeModel ?? undefined,
             reasoning: safeReasoning,
-            agentCliEnv:
-              body.agentCliEnv && typeof body.agentCliEnv === 'object'
-                ? body.agentCliEnv
-                : undefined,
             signal: controller.signal,
           });
           return res.json(result);

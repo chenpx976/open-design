@@ -31,7 +31,7 @@ Every external project this spec leans on. Three questions per entry: what is it
   - Export pipeline shape (HTML/PDF/PPTX/ZIP/MD).
 - **What we don't:**
   - **Electron** — we go Next.js web app instead (runs local and deploys to Vercel).
-  - **Bundled agent on `pi-ai`** — we delegate to the user's existing CLI.
+  - **Bundled `pi-ai` UI runtime** — we host Pi through the Node.js daemon and worker boundary instead.
   - **Proprietary skill format** (TypeScript modules compiled into the app) — we use Claude Code's `SKILL.md` so third-party skills drop in.
   - **SQLite for artifacts** — plain files + `.jsonl` history, so git tracks it naturally.
   - **Sole focus on UI panels** — we add Design System mode and `DESIGN.md` as first-class.
@@ -40,12 +40,12 @@ Every external project this spec leans on. Three questions per entry: what is it
 - **Repo:** [github.com/multica-ai/multica][multica]
 
 [multica]: https://github.com/multica-ai/multica
-- **What it is:** Open-source "managed agents platform." Frontend: Next.js 16. Backend: Go + Chi + WebSocket. DB: PostgreSQL + pgvector. **Local daemon auto-detects CLIs on PATH: Claude Code, Codex, OpenClaw, OpenCode, Hermes, Gemini, Pi, Cursor Agent.** Assigns work via a web board view; agents execute; WebSocket streams progress.
-- **Why it matters:** They already solved the "detect and wrap local code agents" problem.
+- **What it is:** Open-source "managed agents platform." Frontend: Next.js 16. Backend: Go + Chi + WebSocket. DB: PostgreSQL + pgvector. A local daemon brokers agent execution and streams progress to the web app.
+- **Why it matters:** Useful architectural precedent for a privileged daemon/runtime topology, even though OD no longer detects or wraps local code-agent binaries.
 - **What we borrow:**
-  - **PATH-scan + config-dir probe detection** strategy.
+  - Daemon/runtime topology: a privileged local service owns execution and streams progress to a browser UI.
   - **Local daemon + WebSocket** topology (daemon on user's machine, thin web client).
-  - Agent catalog (our P0–P2 list maps closely to theirs).
+  - Agent progress streaming and daemon-owned runtime control.
 - **What we don't:**
   - Go backend + PostgreSQL — overkill for our scope; Node daemon + filesystem is enough.
   - Team / board / issue-assignment model — not our domain.
@@ -56,10 +56,10 @@ Every external project this spec leans on. Three questions per entry: what is it
 
 [ccsw]: https://github.com/farion1231/cc-switch
 - **What it is:** Tauri desktop app for managing five CLI tools (Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw). Provider management, MCP server config, skills install, session browsing. SQLite at `~/.cc-switch/cc-switch.db`. **Skills dir at `~/.cc-switch/skills/` with symlinks into each agent's config dir.** 50+ provider presets.
-- **Why it matters:** Shows exactly how to live beside multiple code-agent CLIs without stepping on their config.
+- **Why it matters:** Useful historical context for daemon/runtime topology and local-first agent UX. The current OD runtime explicitly does not adopt PATH scan or config probe behavior.
 - **What we borrow:**
-  - **Symlink-based skill distribution.** Canonical skill location + symlinks to each agent's skills dir.
-  - Knowledge of per-agent config dir locations (`~/.claude/`, `~/.codex/`, …).
+  - **Symlink-based skill distribution** as historical inspiration for portable skill bundles.
+  - Provider preset curation patterns.
   - "Provider presets" idea — a curated list we can ship so users don't have to hand-enter endpoint URLs for OpenAI-compatible relays.
 - **What we don't:**
   - Tauri / desktop app — not our shape.
@@ -99,10 +99,10 @@ Every external project this spec leans on. Three questions per entry: what is it
 | Project | Relevance |
 |---|---|
 | [Claude Code skills docs](https://docs.anthropic.com/) | Source of the `SKILL.md` format we adopt |
-| [Cursor .cursorrules](https://docs.cursor.com/) | Informs how the Cursor Agent adapter injects skill context |
+| [Cursor .cursorrules](https://docs.cursor.com/) | Historical input for context-file conventions; current OD prompt composition is Pi-runtime-first |
 | [Reveal.js](https://revealjs.com/) / [Marp](https://marp.app/) | Reference for deck HTML navigation patterns |
 | [Shadcn/ui](https://ui.shadcn.com/) | Likely component library for the web UI shell |
-| [Vercel AI SDK](https://sdk.vercel.ai/) | Streaming primitives for the API-fallback adapter |
+| [Vercel AI SDK](https://sdk.vercel.ai/) | Reference for provider-streaming shapes in BYOK API mode |
 | [Puppeteer](https://pptr.dev/) | PDF export engine |
 | [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) | PPTX export engine |
 | [chokidar](https://github.com/paulmillr/chokidar) | Filesystem watching for skill / artifact hot-reload |
@@ -143,4 +143,4 @@ These "don'ts" are what keep the MVP achievable in 6–8 weeks.
 
 ## Living references
 
-This file is maintained. When we add an adapter or borrow a pattern from a new upstream, add it here with the same three-question format. When upstream licensing or direction changes materially, flag it here and cross-link from [`spec.md`](spec.md).
+This file is maintained. When we add a runtime, filesystem provider, skill protocol influence, or borrow a pattern from a new upstream, add it here with the same three-question format. When upstream licensing or direction changes materially, flag it here and cross-link from [`spec.md`](spec.md).

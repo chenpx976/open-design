@@ -1,6 +1,6 @@
 # Skills Protocol
 
-**Parent:** [`spec.md`](spec.md) · **Siblings:** [`skills-contributing.md`](skills-contributing.md) · [`architecture.md`](architecture.md) · [`agent-adapters.md`](agent-adapters.md) · [`modes.md`](modes.md)
+**Parent:** [`spec.md`](spec.md) · **Siblings:** [`skills-contributing.md`](skills-contributing.md) · [`architecture.md`](architecture.md) · [`agent-runtime.md`](agent-runtime.md) · [`modes.md`](modes.md)
 
 > Want to ship a skill upstream rather than read the protocol spec? See [`skills-contributing.md`](skills-contributing.md) — quick start, merge bar, PR template, common rejections. This file is the **what** (frontmatter grammar, discovery rules, mode semantics); that file is the **how** (clone to merged PR).
 

@@ -10,7 +10,6 @@ export * from './api/connectionTest';
 export * from './api/files';
 export * from './api/finalize';
 export * from './api/live-artifacts';
-export * from './api/mcp';
 export * from './api/orbit';
 export * from './api/providerModels';
 export * from './api/projects';

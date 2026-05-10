@@ -30,7 +30,7 @@ describe('CritiqueSseEvent', () => {
       { type: 'panelist_close', runId: 'r', round: 1, role: 'critic', score: 6 },
       { type: 'round_end', runId: 'r', round: 1, composite: 6, mustFix: 7, decision: 'continue', reason: '' },
       { type: 'ship', runId: 'r', round: 3, composite: 8.6, status: 'shipped', artifactRef: { projectId: 'p', artifactId: 'a' }, summary: '' },
-      { type: 'degraded', runId: 'r', reason: 'malformed_block', adapter: 'pi-rpc' },
+      { type: 'degraded', runId: 'r', reason: 'malformed_block', adapter: 'pi-sdk' },
       { type: 'interrupted', runId: 'r', bestRound: 2, composite: 7.86 },
       { type: 'failed', runId: 'r', cause: 'cli_exit_nonzero' },
       { type: 'parser_warning', runId: 'r', kind: 'weak_debate', position: 0 },

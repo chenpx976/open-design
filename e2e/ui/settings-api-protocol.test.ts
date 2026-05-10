@@ -144,7 +144,6 @@ test('BYOK quick fill provider updates fields and saved settings persist after c
     onboardingCompleted: true,
     mediaProviders: {},
     agentModels: {},
-    agentCliEnv: {},
   });
 
   const dialog = page.getByRole('dialog');
@@ -208,7 +207,6 @@ test('BYOK save stays disabled until required fields are valid', async ({ page }
     onboardingCompleted: true,
     mediaProviders: {},
     agentModels: {},
-    agentCliEnv: {},
   });
 
   const dialog = page.getByRole('dialog');
@@ -228,7 +226,7 @@ test('BYOK save stays disabled until required fields are valid', async ({ page }
   });
 });
 
-test('saving Local CLI updates the entry status pill with the selected agent', async ({ page }) => {
+test('saving Pi agent updates the entry status pill with the selected agent', async ({ page }) => {
   await openExecutionSettingsWithAgents(
     page,
     {
@@ -245,12 +243,11 @@ test('saving Local CLI updates the entry status pill with the selected agent', a
       onboardingCompleted: true,
       mediaProviders: {},
       agentModels: {},
-      agentCliEnv: {},
     },
     [
       {
         id: 'codex',
-        name: 'Codex CLI',
+        name: 'Pi agent',
         bin: 'codex',
         available: true,
         version: '0.80.0',
@@ -258,7 +255,7 @@ test('saving Local CLI updates the entry status pill with the selected agent', a
       },
       {
         id: 'gemini',
-        name: 'Gemini CLI',
+        name: 'Unavailable Pi agent',
         bin: 'gemini',
         available: false,
         version: null,
@@ -269,8 +266,8 @@ test('saving Local CLI updates the entry status pill with the selected agent', a
 
   const dialog = page.getByRole('dialog');
 
-  await dialog.getByRole('tab', { name: /Local CLI.*1 installed/i }).click();
-  await dialog.getByRole('button', { name: /Codex CLI/i }).click();
+  await dialog.getByRole('tab', { name: /Pi agent.*1 available/i }).click();
+  await dialog.getByRole('button', { name: /Pi agent/i }).click();
   await expect.poll(async () => readSavedConfig(page)).toMatchObject({
     mode: 'daemon',
     agentId: 'codex',
@@ -279,7 +276,7 @@ test('saving Local CLI updates the entry status pill with the selected agent', a
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
   const executionPill = page.getByTitle('Configure execution mode');
-  await expect(executionPill).toContainText('Local CLI');
-  await expect(executionPill).toContainText('Codex CLI');
+  await expect(executionPill).toContainText('Pi agent');
+  await expect(executionPill).toContainText('Pi agent');
   await expect(executionPill).toContainText('0.80.0');
 });

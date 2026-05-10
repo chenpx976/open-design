@@ -1,6 +1,5 @@
 import type {
   AgentInfo,
-  AgentCliEnvPrefs,
   AgentModelPrefs,
   AgentTestRequest,
   AppVersionInfo,
@@ -165,12 +164,9 @@ export interface ApiProtocolConfig {
   apiProviderBaseUrl?: string | null;
 }
 
-// Per-CLI model + reasoning the user picked in the model menu. Each agent
-// keeps its own slot so flipping between Codex and Gemini doesn't reset the
-// other one's choice. Missing entries fall back to the agent's first
-// declared model (`'default'` — let the CLI pick).
+// Per-agent model + reasoning the user picked in the model menu.
+// Missing entries fall back to the daemon-hosted Pi runtime default.
 export type AgentModelChoice = AgentModelPrefs;
-export type AgentCliEnvConfig = AgentCliEnvPrefs;
 
 export type AppTheme = 'system' | 'light' | 'dark';
 
@@ -297,8 +293,6 @@ export interface AppConfig {
   // Pre-existing configs without this field fall through to the agent's
   // declared default.
   agentModels?: Record<string, AgentModelChoice>;
-  // Optional non-secret runtime config locations still honored by packaged runs.
-  agentCliEnv?: AgentCliEnvConfig;
   // Caps the upstream completion length in API mode. Defaults to 8192 when
   // unset; raise it for providers (e.g. MiMo) that allow longer responses.
   maxTokens?: number;

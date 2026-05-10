@@ -357,5 +357,5 @@ This Quickstart is the runnable seed of the spec in [`docs/`](docs/). The spec d
 
 - `docs/architecture.md` describes the shipped stack: Next.js 16 App Router in front, local daemon behind it, and `apps/web/next.config.ts` rewrites in dev to keep the browser talking to the same `/api` surface.
 - `docs/skills-protocol.md` describes the full `od:` frontmatter (typed inputs, sliders, capability gating). This MVP reads `name` / `description` / `triggers` / `od.mode` / `od.design_system.requires` only — extend `apps/daemon/src/skills.ts` to add the rest.
-- `docs/agent-adapters.md` describes the Pi SDK adapter and the worker/runtime boundary used by local and clustered deployments.
+- `docs/agent-runtime.md` describes the Pi SDK runtime and the worker/runtime boundary used by local and clustered deployments.
 - `docs/modes.md` lists four modes: prototype / deck / template / design-system. We ship skills for the first two; the picker already filters by `mode`.

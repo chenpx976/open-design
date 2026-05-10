@@ -1,13 +1,11 @@
 /**
- * Daemon provider — fetch-based SSE client for /api/runs. The daemon can
- * emit three event streams depending on the agent's streamFormat:
+ * Daemon provider — fetch-based SSE client for /api/runs. The daemon emits
+ * the Pi runtime stream over the shared run API:
  *   - 'agent'   : typed events emitted by the daemon-hosted Pi runtime
  *                 (status, text_delta, thinking_delta, tool_use, tool_result,
  *                 usage, raw). We forward these to the UI as AgentEvent items.
- *   - 'stdout'  : plain chunks from other CLIs. We wrap them in a single
- *                 rolling 'text' event.
- *   - 'stderr'  : incidental stderr. Shown only when the process exits
- *                 non-zero (tail appended to the error message).
+ *   - 'stderr'  : incidental daemon/runtime stderr. Shown only on failed runs
+ *                 when available.
  */
 import type { AgentEvent, ChatCommentAttachment, ChatMessage } from '../types';
 import type {
@@ -379,7 +377,7 @@ function isChatRunStatus(value: unknown): value is ChatRunStatus {
   return value === 'queued' || value === 'running' || value === 'succeeded' || value === 'failed' || value === 'canceled';
 }
 
-// Translate a raw `agent` SSE payload (what apps/daemon/src/claude-stream.ts emits)
+// Translate a raw `agent` SSE payload from the Pi runtime
 // into the UI's AgentEvent union. Keep this liberal — unknown types just
 // return null so the UI ignores them instead of rendering garbage.
 function translateAgentEvent(data: DaemonAgentPayload): AgentEvent | null {

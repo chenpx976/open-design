@@ -50,7 +50,6 @@ import { fetchConnectors, fetchSkills } from '../providers/registry';
 import { MEDIA_PROVIDERS } from '../media/models';
 import type { MediaProvider } from '../media/models';
 import { PetSettings } from './pet/PetSettings';
-import { McpClientSection } from './McpClientSection';
 import { LibrarySection } from './LibrarySection';
 import { PrivacySection } from './PrivacySection';
 import { RoutinesSection } from './RoutinesSection';
@@ -75,7 +74,6 @@ export type SettingsSection =
   | 'orbit'
   | 'routines'
   | 'integrations'
-  | 'mcpClient'
   | 'language'
   | 'appearance'
   | 'notifications'
@@ -128,7 +126,6 @@ interface Props {
 
 export interface AgentRefreshOptions {
   throwOnError?: boolean;
-  agentCliEnv?: AppConfig['agentCliEnv'];
 }
 
 const SUGGESTED_MODELS_BY_PROTOCOL = {
@@ -347,13 +344,6 @@ export function mergeProviderModelOptions(
   return out;
 }
 
-const AGENT_CLI_ENV_FIELDS: ReadonlyArray<{
-  agentId: string;
-  envKey: string;
-  labelKey: keyof Dict;
-  placeholder: string;
-}> = [];
-
 function defaultApiProtocolConfig(protocol: ApiProtocol): ApiProtocolConfig {
   const provider = KNOWN_PROVIDERS.find((p) => p.protocol === protocol);
   return {
@@ -477,37 +467,9 @@ export function updateCurrentApiProtocolConfig(
   );
 }
 
-export function updateAgentCliEnvValue(
-  config: AppConfig,
-  agentId: string,
-  envKey: string,
-  rawValue: string,
-): AppConfig {
-  const value = rawValue.trim();
-  const agentCliEnv = { ...(config.agentCliEnv ?? {}) };
-  const nextAgentEnv = { ...(agentCliEnv[agentId] ?? {}) };
-  if (value) {
-    nextAgentEnv[envKey] = value;
-  } else {
-    delete nextAgentEnv[envKey];
-  }
-
-  if (Object.keys(nextAgentEnv).length > 0) {
-    agentCliEnv[agentId] = nextAgentEnv;
-  } else {
-    delete agentCliEnv[agentId];
-  }
-
-  return {
-    ...config,
-    agentCliEnv: Object.keys(agentCliEnv).length > 0 ? agentCliEnv : {},
-  };
-}
-
 export function agentRefreshOptionsForConfig(cfg: AppConfig): AgentRefreshOptions {
   return {
     throwOnError: true,
-    agentCliEnv: cfg.agentCliEnv ?? {},
   };
 }
 
@@ -592,7 +554,6 @@ export function sanitizeSettingsSavePayload(
     baseUrl: initial.baseUrl,
     model: initial.model,
     agentId: initial.agentId,
-    agentCliEnv: initial.agentCliEnv,
     maxTokens: initial.maxTokens,
   };
 }
@@ -690,9 +651,6 @@ export function SettingsDialog({
     ReadonlySet<string>
   >(() => new Set());
   const languageRef = useRef<HTMLDivElement | null>(null);
-  // Imperative handle for the External MCP section. The dialog footer Save
-  // routes through this when the MCP tab is active so the user can press the
-  // single Save button at the bottom instead of hunting for the inner one.
   useEffect(() => {
     setActiveSection(initialSection);
   }, [initialSection]);
@@ -717,7 +675,6 @@ export function SettingsDialog({
     cfg.agentId,
     agentChoiceForTest?.model,
     agentChoiceForTest?.reasoning,
-    cfg.agentCliEnv,
   ]);
   useEffect(() => {
     providerTestRevisionRef.current += 1;
@@ -839,7 +796,6 @@ export function SettingsDialog({
           agentId: selected.id,
           model: choice.model || undefined,
           reasoning: choice.reasoning || undefined,
-          agentCliEnv: cfg.agentCliEnv ?? {},
         },
         controller.signal,
       );
@@ -1300,7 +1256,6 @@ export function SettingsDialog({
       subtitle: 'Scheduled, unattended agent sessions that run on their own.',
     },
     integrations: { title: t('settings.mcpServerTitle'), subtitle: t('settings.mcpServerHint') },
-    mcpClient: { title: t('settings.externalMcpTitle'), subtitle: t('settings.externalMcpHint') },
     language: { title: t('settings.language'), subtitle: t('settings.languageHint') },
     appearance: { title: t('settings.appearance'), subtitle: t('settings.appearanceHint') },
     notifications: { title: t('settings.notifications'), subtitle: t('settings.notificationsHint') },
@@ -1470,17 +1425,6 @@ export function SettingsDialog({
               <span>
                 <strong>{t('settings.mcpServerTitle')}</strong>
                 <small>{t('settings.mcpServerHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'mcpClient' ? ' active' : ''}`}
-              onClick={() => setActiveSection('mcpClient')}
-            >
-              <Icon name="sparkles" size={18} />
-              <span>
-                <strong>{t('settings.externalMcpTitle')}</strong>
-                <small>{t('settings.externalMcpHint')}</small>
               </span>
             </button>
             <button
@@ -1944,37 +1888,6 @@ export function SettingsDialog({
                   </div>
                 );
               })()}
-              {AGENT_CLI_ENV_FIELDS.length > 0 ? (
-                <div className="agent-cli-env">
-                  <div className="agent-cli-env-head">
-                    <h4>{t('settings.cliEnvTitle')}</h4>
-                    <p className="hint">{t('settings.cliEnvHint')}</p>
-                  </div>
-                  <div className="agent-cli-env-grid">
-                    {AGENT_CLI_ENV_FIELDS.map((field) => (
-                      <label className="field" key={`${field.agentId}:${field.envKey}`}>
-                        <span className="field-label">{t(field.labelKey)}</span>
-                        <input
-                          type="text"
-                          value={cfg.agentCliEnv?.[field.agentId]?.[field.envKey] ?? ''}
-                          placeholder={field.placeholder}
-                          spellCheck={false}
-                          onChange={(e) =>
-                            setCfg((c) =>
-                              updateAgentCliEnvValue(
-                                c,
-                                field.agentId,
-                                field.envKey,
-                                e.target.value,
-                              ),
-                            )
-                          }
-                        />
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </section>
           ) : (
             <section className="settings-section">
@@ -2237,8 +2150,6 @@ export function SettingsDialog({
             />
           ) : null}
           {activeSection === 'integrations' ? <IntegrationsSection /> : null}
-
-          {activeSection === 'mcpClient' ? <McpClientSection /> : null}
 
           {activeSection === 'composio' ? (
             <ConnectorSection

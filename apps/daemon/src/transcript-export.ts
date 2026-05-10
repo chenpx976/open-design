@@ -14,10 +14,9 @@
 //
 // Persisted event shape: see `packages/contracts/src/api/chat.ts` →
 // `PersistedAgentEvent` (the discriminator field is `kind`, NOT `type`). The
-// daemon's claude-stream emits a `type:`-shaped wire format; the web app
-// translates those into `kind:`-shaped AgentEvents before PUTting them back
-// to be persisted. The export reads what is actually on disk, so it speaks
-// the `kind:` shape.
+// daemon emits a `type:`-shaped Pi event stream; the web app translates those
+// into `kind:`-shaped AgentEvents before PUTting them back to be persisted.
+// The export reads what is actually on disk, so it speaks the `kind:` shape.
 //
 // Coalescing rules:
 //   * `kind: 'text'` runs concatenate their `text` field into one terminal

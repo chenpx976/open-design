@@ -59,8 +59,7 @@ export const en: Dict = {
   'settings.modeApi': 'API provider',
   'settings.modeApiMeta': 'BYOK',
   'settings.codeAgent': 'Code agent',
-  'settings.codeAgentHint':
-    'Powered by Pi inside the Node.js daemon. Pick the model Pi should use for generations.',
+  'settings.codeAgentHint': 'Powered by Pi inside the Node.js daemon. Pick the model Pi should use for generations.',
   'settings.rescan': '↻ Refresh',
   'settings.rescanTitle': 'Refresh Pi runtime status',
   'settings.rescanRunning': 'Refreshing...',
@@ -85,15 +84,13 @@ export const en: Dict = {
   'settings.testUnknown': 'Test failed: {detail}',
   'settings.agentInstall.install': 'Install',
   'settings.agentInstall.docs': 'Docs',
-  'settings.agentInstall.pathHint':
-    'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
+  'settings.agentInstall.pathHint': 'The daemon now embeds Pi through its SDK, so no local coding-agent CLI path setup is required.',
   'settings.agentInstall.stepOpenLinks': 'Open Docs for the Pi runtime if credentials need setup.',
   'settings.agentInstall.stepAuth':
     'Configure Pi credentials through ~/.pi/agent, Pi OAuth, or provider environment variables before returning to Open Design.',
   'settings.agentInstall.stepRescan': 'Click Refresh in this section.',
   'settings.agentInstall.stepSelect': 'Select the Pi agent card once it becomes available.',
-  'settings.noAgentsDetected':
-    'Pi SDK is not available in this daemon build. Reinstall dependencies, then refresh.',
+  'settings.noAgentsDetected': 'Pi SDK is not available in this daemon build. Reinstall dependencies, then refresh.',
   'settings.apiSection': 'Anthropic API',
   'settings.quickFillProvider': 'Quick fill provider',
   'settings.customProvider': 'Custom provider',
@@ -141,12 +138,6 @@ export const en: Dict = {
   'settings.reasoningPicker': 'Reasoning effort',
   'settings.modelPickerHint':
     'Fetched from Pi when credentials are available. "Default" leaves the choice to Pi settings; "Custom…" lets you type any Pi model pattern.',
-  'settings.cliEnvTitle': 'Runtime config locations',
-  'settings.cliEnvHint':
-    'Optional non-secret paths still honored by packaged app runs and MCP integrations.',
-  'settings.cliEnvClaudeConfigDir': 'Claude-compatible config directory',
-  'settings.cliEnvCodexHome': 'Codex home',
-  'settings.cliEnvCodexBin': 'Codex executable path',
   'settings.modelCustom': 'Custom (type below)…',
   'settings.modelCustomLabel': 'Custom model id',
   'settings.modelCustomPlaceholder': 'e.g. anthropic/claude-sonnet-4-6',
@@ -155,8 +146,6 @@ export const en: Dict = {
     'API keys for image, video and audio generation. Stored locally and synced to the local daemon.',
   'settings.mcpServerTitle': 'MCP server',
   'settings.mcpServerHint': 'Expose Open Design as an MCP server for your coding agent.',
-  'settings.externalMcpTitle': 'External MCP',
-  'settings.externalMcpHint': 'Add MCP tools from external services (Higgsfield, GitHub, …).',
   'settings.mediaProviderApiKey': 'API key',
   'settings.mediaProviderBaseUrl': 'Base URL',
   'settings.mediaProviderConfigured': 'Configured',
@@ -630,7 +619,7 @@ export const en: Dict = {
     'Describe the design you want — paste or drop images, or @ a file…',
   'chat.composerHint':
     '⌘/Ctrl + Enter to send · paste images · @ to reference files',
-  'chat.cliSettingsTitle': 'Pi agent & model settings',
+  'chat.cliSettingsTitle': 'Pi agent and model settings',
   'chat.cliSettingsAria': 'Open Pi agent and model settings',
   'chat.attachTitle': 'Attach files (or paste / drop)',
   'chat.attachAria': 'Attach files',

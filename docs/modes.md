@@ -1,6 +1,6 @@
 # Modes
 
-**Parent:** [`spec.md`](spec.md) · **Siblings:** [`architecture.md`](architecture.md) · [`skills-protocol.md`](skills-protocol.md) · [`agent-adapters.md`](agent-adapters.md)
+**Parent:** [`spec.md`](spec.md) · **Siblings:** [`architecture.md`](architecture.md) · [`skills-protocol.md`](skills-protocol.md) · [`agent-runtime.md`](agent-runtime.md)
 
 OD exposes four user-facing modes. Modes are not arbitrary; each maps to a distinct **skill type** (see [`skills-protocol.md`](skills-protocol.md) §4) and a distinct **workflow shape**. Keeping them separate lets us tune UI affordances, export pipelines, and default skills per mode.
 
@@ -30,7 +30,7 @@ One high-fidelity screen or flow. User brief → working HTML/JSX in a sandboxed
     ↓
 [ streaming tool-call feed · artifact tree · preview iframe ]
     ↓
-[ comment mode (if adapter supports surgicalEdit) ]
+[ comment mode (Pi runtime receives element-targeted edit prompt) ]
 [ parameter sliders (if skill declares od.parameters) ]
 [ export: html · pdf · zip ]
 ```
@@ -65,7 +65,7 @@ One high-fidelity screen or flow. User brief → working HTML/JSX in a sandboxed
 
 ### Failure modes
 - Skill requires DESIGN.md but none is set → UI prompts to create one (offers Design System mode).
-- Agent times out mid-generation → partial artifact preserved; "resume" button if adapter supports it, else "regenerate."
+- Agent times out mid-generation → partial artifact preserved; the next turn can ask Pi to continue or regenerate.
 - Preview iframe fails to render (JSX parse error) → show raw code with error annotation.
 
 ---
@@ -263,7 +263,7 @@ Inference is a hint; user can override via a mode picker on the artifact page.
 
 ## 8. What mode ≠
 
-Modes are **workflow containers**, not product subscriptions or pricing tiers. They all run on the same infrastructure, the same skills protocol, and the same agent adapters. A user can move between modes freely at zero cost.
+Modes are **workflow containers**, not product subscriptions or pricing tiers. They all run on the same infrastructure, the same skills protocol, and the same Pi agent runtime. A user can move between modes freely at zero cost.
 
 ## 9. Out of scope for MVP
 

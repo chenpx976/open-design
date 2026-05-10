@@ -20,23 +20,22 @@ describe('api protocol labels', () => {
     expect(apiProtocolModelLabel('azure', '  ')).toBe('Azure OpenAI');
   });
 
-  it('includes explicit local CLI models when labeling agent messages', () => {
-    expect(agentModelDisplayName('claude', 'Claude Code', 'claude-sonnet-4-6')).toBe(
-      'Claude · claude-sonnet-4-6',
+  it('includes explicit Pi models when labeling agent messages', () => {
+    expect(agentModelDisplayName('pi', 'Pi agent', 'anthropic/claude-sonnet-4-5')).toBe(
+      'Pi · anthropic/claude-sonnet-4-5',
     );
-    expect(agentModelDisplayName('claude', 'Claude Code', 'default')).toBe('Claude');
+    expect(agentModelDisplayName('node:pi-sdk', 'Pi agent', 'default')).toBe('Pi');
   });
 
-  it('normalizes Qoder local CLI ids, aliases, and executable paths', () => {
-    expect(agentDisplayName('qoder')).toBe('Qoder');
-    expect(exactAgentDisplayName('qodercli')).toBe('Qoder');
-    expect(exactAgentDisplayName('Qoder CLI')).toBe('Qoder');
-    expect(agentDisplayName('/opt/homebrew/bin/qodercli')).toBe('Qoder');
-    expect(agentDisplayName('C:\\Tools\\qodercli.cmd')).toBe('Qoder');
+  it('normalizes Pi runtime ids and aliases', () => {
+    expect(agentDisplayName('pi')).toBe('Pi');
+    expect(exactAgentDisplayName('pi sdk')).toBe('Pi');
+    expect(exactAgentDisplayName('node:pi-sdk')).toBe('Pi');
+    expect(agentDisplayName('/opt/open-design/node:pi-sdk')).toBe('Pi');
   });
 
-  it('includes explicit Qoder models but hides the default model', () => {
-    expect(agentModelDisplayName('qoder', 'Qoder CLI', 'ultimate')).toBe('Qoder · ultimate');
-    expect(agentModelDisplayName('qoder', 'Qoder CLI', 'default')).toBe('Qoder');
+  it('includes explicit Pi models but hides the default model', () => {
+    expect(agentModelDisplayName('pi-sdk', 'Pi agent', 'openai/gpt-5.4')).toBe('Pi · openai/gpt-5.4');
+    expect(agentModelDisplayName('pi-sdk', 'Pi agent', 'default')).toBe('Pi');
   });
 });

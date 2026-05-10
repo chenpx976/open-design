@@ -23,6 +23,10 @@ async function commandOk(command: string, args: string[]): Promise<boolean> {
   }
 }
 
+async function dockerImageExists(image: string): Promise<boolean> {
+  return commandOk('docker', ['image', 'inspect', image]);
+}
+
 function composeArgs(projectName: string, ...args: string[]): string[] {
   return ['compose', '-p', projectName, '-f', composeFile, '--profile', 'worker', ...args];
 }
@@ -144,10 +148,11 @@ describe('cluster deployment configuration', () => {
     const port = 18_000 + (process.pid % 1_000);
     const projectName = `od-e2e-${process.pid}`;
     const baseUrl = `http://127.0.0.1:${port}`;
+    const image = process.env.OPEN_DESIGN_IMAGE ?? 'open-design-e2e:cluster-smoke';
     const env = {
       ...process.env,
       OPEN_DESIGN_PORT: String(port),
-      OPEN_DESIGN_IMAGE: `open-design-e2e:${process.pid}`,
+      OPEN_DESIGN_IMAGE: image,
       OPEN_DESIGN_AGENT_RUNTIME: 'sqlite-worker',
       OPEN_DESIGN_AGENT_RUN_STORE: 'postgres',
       OPEN_DESIGN_AGENT_JOB_QUEUE: 'redis',
@@ -155,7 +160,9 @@ describe('cluster deployment configuration', () => {
     };
 
     try {
-      await dockerCompose(projectName, ['up', '-d', '--build'], env);
+      const forceBuild = process.env.OPEN_DESIGN_E2E_FORCE_BUILD === '1';
+      const needsBuild = forceBuild || !(await dockerImageExists(image));
+      await dockerCompose(projectName, needsBuild ? ['up', '-d', '--build'] : ['up', '-d'], env);
       await waitForHealth(baseUrl);
 
       const projectId = `compose-cluster-${Date.now()}`;
@@ -202,6 +209,30 @@ describe('cluster deployment configuration', () => {
         'status',
       ], env);
       expect(redisStatus.stdout.trim()).toBe('succeeded');
+
+      const queueDepth = await dockerCompose(projectName, [
+        'exec',
+        '-T',
+        'redis',
+        'redis-cli',
+        'llen',
+        'open-design:agent-jobs:queued',
+      ], env);
+      expect(queueDepth.stdout.trim()).toBe('0');
+
+      const runningJobs = await dockerCompose(projectName, [
+        'exec',
+        '-T',
+        'redis',
+        'redis-cli',
+        'zcard',
+        'open-design:agent-jobs:running',
+      ], env);
+      expect(runningJobs.stdout.trim()).toBe('0');
+
+      const workerLogs = await dockerCompose(projectName, ['logs', '--no-color', 'agent-worker'], env);
+      expect(workerLogs.stdout).toContain('[agent-worker]');
+      expect(workerLogs.stdout).toMatch(new RegExp(runId));
     } finally {
       await dockerCompose(projectName, ['down', '-v', '--remove-orphans'], env).catch(() => {});
     }

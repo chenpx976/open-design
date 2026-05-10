@@ -237,7 +237,7 @@ OD 的提示词栈把 `RULE 1` 写死了：每个新设计任务都从 `<questio
 
 ### 5 · Daemon 让 agent 感觉自己就在你笔记本上 —— 因为它就是
 
-Daemon `spawn` CLI 时，`cwd` 设到该项目在 `.od/projects/<id>/` 下的 artifact 文件夹。Agent 拿到的 `Read` / `Write` / `Bash` / `WebFetch` 都是真工具，作用在真文件系统上。它能 `Read` skill 的 `assets/template.html`，能 `grep` 你的 CSS 拿 hex，能写一份 `brand-spec.md`，能落地生成的图片，能产出 `.pptx` / `.zip` / `.pdf` —— 这些文件在 turn 结束的时候作为下载 chip 出现在文件工作区里。Session、对话、消息、tab 都持久化在本地 SQLite 里 —— 明天再打开这个项目，agent 的 todo 卡片还在你昨天停下的地方。
+Daemon 为每个项目创建 `.od/projects/<id>/` 工作区，并把 Pi SDK session 限制在这棵 `ProjectFs` 下。Agent 拿到的 `Read` / `Write` / `Edit` / `Bash` 都是真工具，作用在真文件系统上。它能 `Read` skill 的 `assets/template.html`，能 `grep` 你的 CSS 拿 hex，能写一份 `brand-spec.md`，能落地生成的图片，能产出 `.pptx` / `.zip` / `.pdf` —— 这些文件在 turn 结束的时候作为下载 chip 出现在文件工作区里。Session、对话、消息、tab、run event 都持久化在本地 SQLite 里；集群模式可以把 run history 放到 Postgres，并交给 Redis worker 执行。
 
 ### 6 · 提示词栈本身就是产品
 
@@ -277,12 +277,11 @@ DISCOVERY 指令         （turn-1 表单、turn-2 品牌分支、TodoWrite、�
    │  可选 sidecar IPC：/tmp/open-design/ipc/<ns>/<app>.sock
    │  （STATUS · EVAL · SCREENSHOT · CONSOLE · CLICK · SHUTDOWN）
    └─────────┬───────────────────────┘
-             │ spawn(cli, [...], { cwd: .od/projects/<id> })
+             │ AgentRuntime.run({ cwd: .od/projects/<id> })
              ▼
    ┌──────────────────────────────────────────────────────────────────┐
-   │  claude · codex · gemini · opencode · cursor-agent · qwen        │
-   │  qoder · copilot · hermes (ACP) · kimi (ACP) · pi (RPC)          │
-   │  读 SKILL.md + DESIGN.md，把 artifact 写到磁盘                   │
+   │  Pi SDK session · bounded ProjectFs · just-bash · artifact watch │
+   │  thinking + tool_use + tool_result + 文件变化通过 SSE 返回 UI    │
    └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -431,7 +430,7 @@ open-design/
 │   ├── spec.md                    ← 产品定义、场景、差异化
 │   ├── architecture.md            ← 拓扑、数据流、组件
 │   ├── skills-protocol.md         ← 扩展 SKILL.md 的 od: frontmatter
-│   ├── agent-adapters.md          ← 各 CLI 检测 + 派发
+│   ├── agent-runtime.md          ← Pi SDK runtime + worker 边界
 │   ├── modes.md                   ← prototype / deck / template / design-system
 │   ├── references.md              ← 详尽的引用与师承
 │   ├── roadmap.md                 ← 分阶段交付
@@ -493,7 +492,7 @@ open-design/
 
 ## 媒体生成
 
-OD 不止于代码。同一套生成 `<artifact>` HTML 的 chat 入口，也驱动**图像**、**视频**、**音频**生成 —— 模型 adapter 已经接进 daemon 的 media pipeline（[`apps/daemon/src/media-models.ts`](apps/daemon/src/media-models.ts)、[`apps/web/src/media/models.ts`](apps/web/src/media/models.ts)）。每一次渲染都是真实落盘的文件，`.png` 或 `.mp4` 在 turn 结束时直接以下载 chip 的形式出现在工作区里。
+OD 不止于代码。同一套生成 `<artifact>` HTML 的 chat 入口，也驱动**图像**、**视频**、**音频**生成 —— provider 模型定义已经接进 daemon 的 media pipeline（[`apps/daemon/src/media-models.ts`](apps/daemon/src/media-models.ts)、[`apps/web/src/media/models.ts`](apps/web/src/media/models.ts)）。每一次渲染都是真实落盘的文件，`.png` 或 `.mp4` 在 turn 结束时直接以下载 chip 的形式出现在工作区里。
 
 目前主力是三个模型族：
 
@@ -681,7 +680,7 @@ Open Design 现在只暴露一个 daemon-hosted coding agent：Pi SDK。
 
 ## 贡献
 
-欢迎 issue、PR、新 skill、新 design system。收益最高的贡献往往就是一个文件夹、一份 Markdown，或者一个 PR 大小的 adapter：
+欢迎 issue、PR、新 skill、新 design system。收益最高的贡献往往就是一个聚焦文件夹、一份 Markdown，或者一个小的 runtime/provider 改进：
 
 - **加一个 skill** —— 往 [`skills/`](skills/) 丢一个文件夹，遵循 [`SKILL.md`][skill] 规范。
 - **加一套 design system** —— 往 [`design-systems/<brand>/`](design-systems/) 丢一份 `DESIGN.md`，用 9 段式 schema。

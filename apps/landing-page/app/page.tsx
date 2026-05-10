@@ -429,7 +429,7 @@ export default function Page() {
                   </div>
                   <div className='card' data-reveal>
                     <div className='num'>
-                      03<span className='tag'>Adapters</span>
+                      03<span className='tag'>Runtime</span>
                     </div>
                     <svg
                       className='icon'
@@ -442,19 +442,18 @@ export default function Page() {
                       <circle cx='16' cy='12' r='4.5' />
                     </svg>
                     <h3>
-                      12 Agent
+                      Pi SDK
                       <br />
-                      Adapters
+                      Runtime
                     </h3>
                     <p>
-                      Claude · Codex · Gemini · Cursor · Copilot · OpenCode ·
-                      Devin · Hermes · Pi · Kimi · Kiro · Qwen — auto-detected
-                      on $PATH.
+                      Node.js daemon owns Pi sessions, bounded ProjectFs,
+                      just-bash tools, thinking, tool calls, and previews.
                     </p>
                     <a
                       className='arrow-mark'
                       href={REPO_DAEMON}
-                      aria-label='Read the agent adapter source on GitHub'
+                      aria-label='Read the agent runtime source on GitHub'
                       {...ext}
                     >
                       {arrowOut}
@@ -681,8 +680,8 @@ export default function Page() {
               {[
                 {
                   num: '01',
-                  title: 'Detect',
-                  body: 'The daemon scans your $PATH for 12 coding agents and auto-loads 31 skills + 72 systems on boot.',
+                  title: 'Run',
+                  body: 'The daemon hosts Pi directly, loads 31 skills plus 72 systems, and streams thinking, tool calls, files, and previews.',
                   src: imageAsset('method-1.png', { width: 816, quality: 82 }),
                 },
                 {

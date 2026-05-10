@@ -61,7 +61,6 @@ test.beforeEach(async ({ page }) => {
           skillId: null,
           designSystemId: null,
           agentModels: {},
-          agentCliEnv: {},
         },
       },
     });

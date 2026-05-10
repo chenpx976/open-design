@@ -42,7 +42,6 @@ export const PI_AGENT_DEF = {
   available: true,
   path: 'embedded',
   version: null,
-  streamFormat: 'pi-sdk',
   models: PI_FALLBACK_MODELS,
   reasoningOptions: PI_REASONING_OPTIONS,
   docsUrl: 'https://github.com/earendil-works/pi',
@@ -52,11 +51,6 @@ export const PI_AGENT_DEF = {
 export const AGENT_DEFS = [PI_AGENT_DEF];
 
 const liveModelsByAgent = new Map();
-
-function stripRuntimeOnly(def) {
-  const { streamFormat, ...rest } = def;
-  return rest;
-}
 
 function normalizePiModel(model) {
   if (typeof model !== 'string') return null;
@@ -111,18 +105,12 @@ async function listPiModels() {
 export async function detectAgents() {
   const models = await listPiModels();
   rememberLiveModels(PI_AGENT_ID, models);
-  return [{ ...stripRuntimeOnly(PI_AGENT_DEF), models }];
+  return [{ ...PI_AGENT_DEF, models }];
 }
 
 export function getAgentDef(id) {
   const normalized = typeof id === 'string' ? id.trim().toLowerCase() : '';
   return normalized === PI_AGENT_ID ? PI_AGENT_DEF : null;
-}
-
-export function buildLiveArtifactsMcpServersForAgent() {
-  // Pi's current design intentionally does not use MCP as its native extension
-  // point. OD exposes its runtime affordances in the composed prompt instead.
-  return [];
 }
 
 export function checkPromptArgvBudget() {

@@ -38,6 +38,7 @@ export async function runAgentWorker({
       continue;
     }
     idleSince = Date.now();
+    console.log(`[agent-worker] run=${job.runId} job=${job.id} worker=${workerId} claimed attempt=${job.attempts}`);
     await runJob({ job, runStore, jobQueue, runtime, workerId, heartbeatMs, maxJobMs, maxAttempts });
   }
   return { workerId, stopped: true };
@@ -96,6 +97,7 @@ async function runJob({ job, runStore, jobQueue, runtime, workerId, heartbeatMs,
       status: result?.aborted ? 'canceled' : 'succeeded',
     });
     await jobQueue.completeJob(job.id);
+    console.log(`[agent-worker] run=${runId} job=${job.id} worker=${workerId} status=${result?.aborted ? 'canceled' : 'succeeded'}`);
   } catch (err) {
     await eventWrites;
     const message = err instanceof Error ? err.message : String(err);
@@ -112,6 +114,7 @@ async function runJob({ job, runStore, jobQueue, runtime, workerId, heartbeatMs,
       await appendRunEvent('end', { code: 1, signal: null, status: 'failed' });
     }
     await jobQueue.failJob(job.id, message, { retryable, maxAttempts });
+    console.warn(`[agent-worker] run=${runId} job=${job.id} worker=${workerId} status=${retryable ? 'retrying' : 'failed'} error=${message}`);
   } finally {
     if (timeout) clearTimeout(timeout);
     if (heartbeat) clearInterval(heartbeat);

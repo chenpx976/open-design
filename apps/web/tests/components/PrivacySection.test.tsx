@@ -23,7 +23,6 @@ const baseConfig: AppConfig = {
   onboardingCompleted: true,
   mediaProviders: {},
   agentModels: {},
-  agentCliEnv: {},
 };
 
 function Harness({ initial }: { initial: AppConfig }) {

@@ -84,13 +84,12 @@ const baseConfig: AppConfig = {
   onboardingCompleted: true,
   mediaProviders: {},
   agentModels: {},
-  agentCliEnv: {},
 };
 
 const availableAgents: AgentInfo[] = [
   {
     id: 'codex',
-    name: 'Codex CLI',
+    name: 'Pi agent',
     bin: 'codex',
     available: true,
     version: '0.80.0',
@@ -620,16 +619,16 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
   });
 });
 
-describe('SettingsDialog execution settings Local CLI interactions', () => {
+describe('SettingsDialog execution settings Pi agent interactions', () => {
   afterEach(() => {
     cleanup();
   });
 
-  it('lets users switch to Local CLI, select an installed agent, and autosave', async () => {
+  it('lets users switch to Pi agent, select an installed agent, and autosave', async () => {
     const installed = availableAgents[0]!;
     const unavailable: AgentInfo = {
       id: 'gemini',
-      name: 'Gemini CLI',
+      name: 'Unavailable Pi agent',
       bin: 'gemini',
       available: false,
       version: null,
@@ -642,11 +641,11 @@ describe('SettingsDialog execution settings Local CLI interactions', () => {
       { agents: [installed, unavailable] },
     );
 
-    const localCliTab = screen.getByRole('tab', { name: /Local CLI.*1 installed/i });
+    const localCliTab = screen.getByRole('tab', { name: /Pi agent.*1 available/i });
     fireEvent.click(localCliTab);
 
-    const codexCard = screen.getByRole('button', { name: /Codex CLI/i }) as HTMLButtonElement;
-    const geminiGroup = screen.getByRole('group', { name: /Gemini CLI/i });
+    const codexCard = screen.getByRole('button', { name: /Pi agent 0\.80\.0/i }) as HTMLButtonElement;
+    const geminiGroup = screen.getByRole('group', { name: /Unavailable Pi agent/i });
     expect(
       (within(geminiGroup).getByRole('link', { name: en['settings.agentInstall.install'] }) as HTMLAnchorElement).getAttribute('href'),
     ).toBe(
@@ -671,14 +670,14 @@ describe('SettingsDialog execution settings Local CLI interactions', () => {
     );
   });
 
-  it('shows an empty state when no local CLI agents are detected', () => {
+  it('shows an empty state when the Pi runtime is unavailable', () => {
     renderSettingsDialog(
       { mode: 'daemon', agentId: null },
       { agents: [] },
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: /Local CLI.*0 installed/i }));
-    expect(screen.getByText(/No agents detected yet/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: /Pi agent.*0 available/i }));
+    expect(screen.getByText(/Pi SDK is not available/i)).toBeTruthy();
   });
 
   it('shows rescan loading, avoids duplicate rescans, and renders the success notice', async () => {
@@ -686,7 +685,7 @@ describe('SettingsDialog execution settings Local CLI interactions', () => {
       availableAgents[0]!,
       {
         id: 'claude',
-        name: 'Claude Code',
+        name: 'Backup Pi worker',
         bin: 'claude',
         available: true,
         version: '1.2.3',
@@ -701,17 +700,16 @@ describe('SettingsDialog execution settings Local CLI interactions', () => {
       { agents: availableAgents, onRefreshAgents },
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: /Local CLI.*1 installed/i }));
-    const rescanButton = screen.getByRole('button', { name: /Rescan|Scanning/i }) as HTMLButtonElement;
+    fireEvent.click(screen.getByRole('tab', { name: /Pi agent.*1 available/i }));
+    const rescanButton = screen.getByRole('button', { name: /Refresh|Refreshing/i }) as HTMLButtonElement;
 
     fireEvent.click(rescanButton);
     expect(onRefreshAgents).toHaveBeenCalledTimes(1);
     expect(onRefreshAgents).toHaveBeenCalledWith({
       throwOnError: true,
-      agentCliEnv: {},
     });
     expect(rescanButton.disabled).toBe(true);
-    expect(screen.getByText('Scanning...')).toBeTruthy();
+    expect(screen.getByText('Refreshing...')).toBeTruthy();
 
     fireEvent.click(rescanButton);
     expect(onRefreshAgents).toHaveBeenCalledTimes(1);
@@ -719,8 +717,8 @@ describe('SettingsDialog execution settings Local CLI interactions', () => {
     pending.resolve(nextAgents);
 
     await waitFor(() => {
-      expect(screen.getByText('Scan complete. 2 available.')).toBeTruthy();
-      expect((screen.getByRole('button', { name: /Rescan/i }) as HTMLButtonElement).disabled).toBe(false);
+      expect(screen.getByText('Refresh complete. 2 embedded agents available.')).toBeTruthy();
+      expect((screen.getByRole('button', { name: /Refresh/i }) as HTMLButtonElement).disabled).toBe(false);
     });
   });
 
@@ -734,50 +732,21 @@ describe('SettingsDialog execution settings Local CLI interactions', () => {
       { agents: availableAgents, onRefreshAgents },
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: /Local CLI.*1 installed/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Rescan/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /Pi agent.*1 available/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Scan failed. Check the daemon and try again.')).toBeTruthy();
+      expect(screen.getByText('Refresh failed. Check the daemon and try again.')).toBeTruthy();
     });
   });
 
-  it('autosaves CLI config locations from the execution form', async () => {
-    const { onPersist } = renderSettingsDialog(
-      { mode: 'daemon', agentId: 'codex' },
-      { agents: availableAgents },
-    );
-
-    fireEvent.click(screen.getByRole('tab', { name: /Local CLI.*1 installed/i }));
-
-    fireEvent.change(screen.getByLabelText('Claude Code config directory'), {
-      target: { value: '  ~/.claude-qa  ' },
-    });
-    fireEvent.change(screen.getByLabelText('Codex home'), {
-      target: { value: ' ~/.codex-team ' },
-    });
-
-    await waitForPersist(
-      onPersist,
-      expect.objectContaining({
-        mode: 'daemon',
-        agentId: 'codex',
-        agentCliEnv: {
-          claude: { CLAUDE_CONFIG_DIR: '~/.claude-qa' },
-          codex: { CODEX_HOME: '~/.codex-team' },
-        },
-      }),
-      {},
-    );
-  });
-
-  it('disables Local CLI mode when the daemon is offline', () => {
+  it('disables Pi agent mode when the daemon is offline', () => {
     renderSettingsDialog(
       { mode: 'api' },
       { agents: availableAgents, daemonLive: false },
     );
 
-    const localCliTab = screen.getByRole('tab', { name: /Local CLI.*daemon offline/i }) as HTMLButtonElement;
+    const localCliTab = screen.getByRole('tab', { name: /Pi agent.*daemon offline/i }) as HTMLButtonElement;
     expect(localCliTab.disabled).toBe(true);
     expect(localCliTab.getAttribute('title')).toBe('Daemon is not running');
     expect(screen.getByRole('tab', { name: /BYOK.*API provider/i }).getAttribute('aria-selected')).toBe('true');

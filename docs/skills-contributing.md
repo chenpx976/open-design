@@ -62,7 +62,7 @@ A skill is a **recipe for producing one kind of artifact**. Not a feature, not a
 
 **No:**
 - A wrapper around a third-party API (Stripe, Alipay, Slack API, GitHub API). That's a feature; submit it via the agent / daemon path, not as a skill.
-- A model loader, vendor SDK bundle, or "BYOK for `<provider>`". OD's bet is "your existing CLI is enough."
+- A model loader, vendor SDK bundle, or "BYOK for `<provider>`". OD's runtime already owns the daemon-hosted Pi SDK path and BYOK provider proxy.
 - A brand-promotion bundle for a sponsor or product launch. Skills are reusable artifact recipes, not campaigns.
 - A duplicate of an existing skill with marginal differentiation. Before opening, search `skills/` and read the descriptions of the closest 2–3 — if you can't articulate the differentiator in one sentence, fold your work into the existing skill instead.
 - A skill whose only output is a screenshot or a video. The artifact has to be something the agent generates from a prompt, not a static asset shipped in `assets/`.
@@ -160,7 +160,7 @@ pnpm tools-dev run web
 
 If the picker doesn't show your skill, check the daemon stderr — the most common cause is a YAML syntax error in frontmatter. The daemon logs the parse error with the offending line.
 
-You don't need any agent CLI on your `PATH` to develop a skill — the daemon falls back to the **Anthropic API · BYOK** path, which is the fastest dev loop anyway. Set your key in Settings once and reuse across runs.
+You don't need any local agent CLI on your `PATH` to develop a skill. The daemon uses the embedded Pi runtime for agent turns, and BYOK provider proxy mode remains available for model/provider experiments from Settings.
 
 ---
 

@@ -1,6 +1,6 @@
 # Design System Authoring Guide
 
-**Parent:** [`spec.md`](spec.md) · **Siblings:** [`architecture.md`](architecture.md) · [`skills-protocol.md`](skills-protocol.md) · [`agent-adapters.md`](agent-adapters.md)
+**Parent:** [`spec.md`](spec.md) · **Siblings:** [`architecture.md`](architecture.md) · [`skills-protocol.md`](skills-protocol.md) · [`agent-runtime.md`](agent-runtime.md)
 
 This guide covers everything a contributor needs to submit a design system that passes review the first time. If you are adding a design system to `design-systems/<slug>/DESIGN.md`, read this document before opening a PR.
 

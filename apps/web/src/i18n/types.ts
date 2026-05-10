@@ -162,11 +162,6 @@ export interface Dict {
   'settings.modelPicker': string;
   'settings.reasoningPicker': string;
   'settings.modelPickerHint': string;
-  'settings.cliEnvTitle': string;
-  'settings.cliEnvHint': string;
-  'settings.cliEnvClaudeConfigDir': string;
-  'settings.cliEnvCodexHome': string;
-  'settings.cliEnvCodexBin': string;
   'settings.modelCustom': string;
   'settings.modelCustomLabel': string;
   'settings.modelCustomPlaceholder': string;
@@ -174,8 +169,6 @@ export interface Dict {
   'settings.mediaProvidersHint': string;
   'settings.mcpServerTitle': string;
   'settings.mcpServerHint': string;
-  'settings.externalMcpTitle': string;
-  'settings.externalMcpHint': string;
   'settings.mediaProviderApiKey': string;
   'settings.mediaProviderBaseUrl': string;
   'settings.mediaProviderConfigured': string;

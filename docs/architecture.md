@@ -1,8 +1,8 @@
 # Architecture
 
-**Parent:** [`spec.md`](spec.md) · **Siblings:** [`skills-protocol.md`](skills-protocol.md) · [`agent-adapters.md`](agent-adapters.md) · [`modes.md`](modes.md)
+**Parent:** [`spec.md`](spec.md) · **Siblings:** [`skills-protocol.md`](skills-protocol.md) · [`agent-runtime.md`](agent-runtime.md) · [`modes.md`](modes.md)
 
-This doc describes the system topology, runtime modes, data flow, and file layout. Design rationale lives in [`spec.md`](spec.md); protocol details for skills and agent adapters live in their own docs.
+This doc describes the system topology, runtime modes, data flow, and file layout. Design rationale lives in [`spec.md`](spec.md); protocol details for skills and the Pi agent runtime live in their own docs.
 
 [ocod]: https://github.com/OpenCoworkAI/open-codesign
 [acd]: https://github.com/VoltAgent/awesome-claude-design
@@ -27,7 +27,7 @@ OD is a web app plus a local daemon. The split means the same UI can run in thre
 │            od daemon (Node, long-running)         │
 │                       │                            │
 │                       ▼                            │
-│            spawns: claude / codex / cursor / …     │
+│            runs Pi SDK agent in Node.js             │
 └────────────────────────────────────────────────────┘
 ```
 
@@ -43,7 +43,7 @@ browser ──► od.yourdomain.com (Vercel)
         od daemon on user's laptop
               │
               ▼
-        spawns: claude / codex / …
+        runs Pi SDK agent in Node.js
 ```
 
 The user runs `od daemon --expose` which prints a tunnel URL; they paste the URL into the deployed web app's "Connect daemon" screen. Daemon holds secrets; Vercel holds nothing sensitive.
@@ -83,21 +83,19 @@ The three topologies share the same web bundle; the difference is which transpor
 ┌─────────────────────── Daemon ───────────────────────┐  ┌────────────┐
 │                                                      │  │ browser-   │
 │  session manager      skill registry                 │  │ only       │
-│  agent adapter pool   design-system resolver         │  │ runtime    │
+│  Pi agent runtime     design-system resolver         │  │ runtime    │
 │  artifact store       preview compile pipeline       │  │ (limited)  │
 │  export pipeline      detection service              │  └────────────┘
 │                                                      │
 └─┬────────────────────────────────────────────────┬───┘
   │                                                │
   ▼                                                ▼
-┌─ agent CLIs ─┐                           ┌─ filesystem ─┐
-│ claude       │                           │ ./.od/      │
-│ codex        │                           │ ~/.od/      │
-│ cursor-agent │                           │ skills/      │
-│ gemini       │                           │ DESIGN.md    │
-│ opencode     │                           └──────────────┘
-│ qwen         │
-└──────────────┘
+┌─ Pi SDK runtime ─┐                       ┌─ filesystem ─┐
+│ AgentSession     │                       │ ./.od/      │
+│ just-bash        │                       │ ~/.od/      │
+│ ProjectFs tools  │                       │ skills/      │
+│ worker queue     │                       │ DESIGN.md    │
+└──────────────────┘                       └──────────────┘
 ```
 
 ## 3. Key components
@@ -116,20 +114,20 @@ Single binary via `pkg` or a thin Node script distributed over npm. Responsibili
 
 - Listen on `http://localhost:7456` by default. Accept REST/SSE routes under `/api/*`.
 - Maintain a **session** per web tab. Sessions hold: active agent, active skill, active artifact, in-flight tool calls, design-system reference.
-- Operate the **agent adapter pool**: one detected CLI = one adapter instance, reused across sessions.
+- Operate the **Pi agent runtime**: one server-side `AgentRuntime` boundary, with inline local execution and queue-backed worker execution for clusters.
 - Scan and index **skills** from `~/.claude/skills/`, `./skills/`, `./.claude/skills/` on startup and on FS-watch events.
 - Own the **artifact store** — writes files to disk, never in memory.
 - Run the **preview compile pipeline** (Babel transform for JSX, CSS inliner for HTML exports).
 - Provide export hooks for HTML/PDF/ZIP and skill-defined deck outputs.
 
-### 3.3 Agent adapter pool
+### 3.3 Pi agent runtime
 
-See [`agent-adapters.md`](agent-adapters.md) for the full interface. Each adapter:
+See [`agent-runtime.md`](agent-runtime.md) for the runtime contract. The daemon:
 
-1. **Detects** its target CLI (PATH lookup + config-dir probe).
-2. **Spawns** the CLI with a standardized wrapper prompt + skill context + design-system context + CWD set to the project's artifact root.
-3. **Streams** stdout/stderr as structured events (JSON Lines if the CLI supports it; line-based parser otherwise).
-4. **Reports capabilities** — does it support multi-turn? Surgical edits? Native skill loading? Tool use?
+1. **Composes** the OD system prompt, skill context, design-system context, working-directory hint, linked-folder hint, and attachment hints.
+2. **Runs** Pi through `@earendil-works/pi-coding-agent` in the Node.js daemon or an `agent-worker` process.
+3. **Constrains** file access through `ProjectFs` and `just-bash` `ReadWriteFs({ root: cwd })`.
+4. **Streams** Pi events as `thinking_delta`, `tool_use`, `tool_result`, `text_delta`, `usage`, and `error`.
 
 ### 3.4 Skill registry
 
@@ -196,7 +194,7 @@ Rationale:
      a. picks active skill (prototype-skill)
      b. loads design-system (DESIGN.md)
      c. materializes a new artifact dir under ./.od/artifacts/<slug>/
-     d. invokes agent adapter with:
+     d. invokes the Pi agent runtime with:
           - system: skill's SKILL.md contents + DESIGN.md
           - user: original prompt
           - cwd: the new artifact dir
@@ -346,12 +344,12 @@ vercel deploy                     # same bundle
 | Skill from untrusted source | Malicious skill in `~/.claude/skills/` | Install-time warning; skills run under the agent's permission model, not ours |
 | Vercel web bundle | Compromised build | Standard Vercel integrity; bundle has zero secrets |
 
-We inherit the agent's permission model on purpose — we don't invent our own sandbox, because Claude Code's `--permission-mode` / Codex's sandboxing / Cursor's containment already exist and are maintained.
+The daemon owns the filesystem boundary for the embedded agent: project writes go through `ProjectFs`, and shell access is backed by `just-bash` with a root restricted to the project directory.
 
 ## 10. Performance notes
 
-- Daemon startup: < 500 ms (lazy adapter init).
-- Agent detection: < 200 ms (parallel PATH probes).
+- Daemon startup: < 500 ms (lazy Pi runtime init).
+- Agent catalog refresh: < 200 ms for fallback models; live Pi model registry lookup depends on provider auth state.
 - First generation latency: dominated by agent model time; OD overhead should be < 50 ms.
 - Preview reload: debounced 100 ms on artifact file writes.
 - Skill index: cold scan < 100 ms for ~50 skills; watched with `chokidar`.

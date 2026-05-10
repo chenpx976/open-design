@@ -1,6 +1,6 @@
 # Roadmap
 
-**Parent:** [`spec.md`](spec.md) · **Siblings:** [`architecture.md`](architecture.md) · [`skills-protocol.md`](skills-protocol.md) · [`agent-adapters.md`](agent-adapters.md) · [`modes.md`](modes.md)
+**Parent:** [`spec.md`](spec.md) · **Siblings:** [`architecture.md`](architecture.md) · [`skills-protocol.md`](skills-protocol.md) · [`agent-runtime.md`](agent-runtime.md) · [`modes.md`](modes.md)
 
 Phased plan from "spec-only today" to "usable MVP" to "published v1." All estimates assume one focused developer; multiply by 0.6 for two and 0.4 for three.
 
@@ -11,11 +11,11 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
 **Goal:** get the interfaces right before writing implementation code. All decisions that are cheap to change on paper and expensive to change in code live here.
 
 **Deliverables:**
-- [x] `README.md` + `docs/spec.md` + architecture / protocol / adapter / modes / references docs (this repo, as of now)
+- [x] `README.md` + `docs/spec.md` + architecture / protocol / runtime / modes / references docs (this repo, as of now)
 - [ ] `docs/schemas/skill-manifest.json` — JSON Schema for the `od:` front-matter block
 - [ ] `docs/schemas/design-system.md` — formal spec of the 9-section `DESIGN.md`
 - [ ] `docs/schemas/protocol.md` — HTTP/SSE API schemas
-- [ ] `docs/schemas/adapter.md` — adapter interface in TypeScript, printed out
+- [ ] `docs/schemas/agent-runtime.md` — runtime interface in TypeScript, printed out
 - [ ] `docs/examples/DESIGN.sample.md` — a working example design system
 - [ ] `docs/examples/saas-landing-skill/` — a working example skill (the one sketched in `skills-protocol.md` §8)
 - [ ] Resolve the four "open questions" at the end of each spec doc
@@ -58,7 +58,7 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
   - **C — Vercel + direct API** (partial; no daemon features)
 
 **Explicitly out of MVP:**
-- legacy local-agent adapter layer
+- legacy local-agent CLI layer
 - Comment mode + sliders
 - Template gallery + template skill
 - Design System from screenshot (vision) / PDF / URL
@@ -152,7 +152,7 @@ Phased plan from "spec-only today" to "usable MVP" to "published v1." All estima
 **Scope sketch (non-binding):**
 - Skill marketplace UI — searchable, categorized, install with one click
 - Skill signing / checksums
-- remote filesystem providers for cluster workers, starting with GitHub-backed or fs-like adapters
+- remote filesystem providers for cluster workers, starting with GitHub-backed or fs-like providers
 - Windows support
 - Collaborative mode (multi-user session on a single daemon)
 - "Freeze prototype as design system" action
@@ -170,7 +170,7 @@ v2 isn't promised. It's the direction if v1 lands.
 |---|---|---|
 | Pi SDK event format changes between versions | runtime stream breaks | pin version range; keep deterministic compatibility tests for text/thinking/tool/result events |
 | Worker queue or run store drifts from inline behavior | local and cluster UX diverge | exercise both paths in E2E smoke tests with the same fake Pi runtime |
-| `@mariozechner/pi-ai` or similar abstractions get popular and contributors ask us to support them | scope creep | defer; if demand is real, add as yet-another-adapter next to `api-fallback` |
+| `@mariozechner/pi-ai` or similar abstractions get popular and contributors ask us to support them | scope creep | defer; if demand is real, evaluate as a separate runtime/provider track |
 | Vercel deploy (Topology B) flaky because of tunnel setup | users can't try the cloud path | ship Topology C (direct API) as the always-works path; document Topology B as advanced |
 | `guizang-ppt-skill` or similar upstream skill changes format | default deck skill breaks | pin git SHA in our default install; monitor upstream |
 | DESIGN.md format evolves in awesome-claude-design | incompatibility | track upstream; adopt changes; our resolver is tolerant of missing sections |
@@ -197,7 +197,7 @@ Decisions supersede each other; keep the log append-only and date every entry.
 If you're the implementer:
 
 1. Read [`spec.md`](spec.md) top to bottom.
-2. Skim [`architecture.md`](architecture.md), [`skills-protocol.md`](skills-protocol.md), [`agent-adapters.md`](agent-adapters.md).
+2. Skim [`architecture.md`](architecture.md), [`skills-protocol.md`](skills-protocol.md), [`agent-runtime.md`](agent-runtime.md).
 3. Argue with anything in the four "open questions" sections; file one-line decisions.
 4. Fill in the missing Phase 0 deliverables (the `docs/schemas/` and `docs/examples/` files).
 5. Scaffold the monorepo and start Week 1.

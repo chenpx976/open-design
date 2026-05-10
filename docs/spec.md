@@ -14,7 +14,7 @@
 Other docs:
 - Architecture → [`architecture.md`](architecture.md)
 - Skills protocol → [`skills-protocol.md`](skills-protocol.md)
-- Agent adapters → [`agent-adapters.md`](agent-adapters.md)
+- Agent runtime → [`agent-runtime.md`](agent-runtime.md)
 - Modes → [`modes.md`](modes.md)
 - References & credits → [`references.md`](references.md)
 - Roadmap → [`roadmap.md`](roadmap.md)
@@ -23,19 +23,19 @@ Other docs:
 
 ## 1. Product in one sentence
 
-> **A web app that turns natural-language briefs into editable, previewable design artifacts (prototypes, decks, templates, design systems) by orchestrating the code agent already installed on the user's machine.**
+> **A web app that turns natural-language briefs into editable, previewable design artifacts (prototypes, decks, templates, design systems) by running a server-hosted Pi coding agent over project files.**
 
 ## 2. Core bets (and why they're different)
 
 | # | Bet | [Anthropic Claude Design][cd] | [Open CoDesign][ocod] | OD |
 |---|---|---|---|---|
 | 1 | Where the product runs | claude.ai only | Local Electron app | **Next.js web app + local daemon + desktop loop** — `pnpm tools-dev`, Vercel web deploy |
-| 2 | Who owns the agent loop | Anthropic, closed | [Open CoDesign][ocod] itself, via [`pi-ai`][piai] | **The user's existing code agent CLI** (Claude Code, Codex, Devin for Terminal, Cursor Agent, Gemini CLI, OpenCode, OpenClaw); direct Anthropic API as fallback |
+| 2 | Who owns the agent loop | Anthropic, closed | [Open CoDesign][ocod] itself, via [`pi-ai`][piai] | **Open Design's Node daemon hosts Pi SDK**; BYOK API mode remains for provider-proxy flows |
 | 3 | What "design skills" are | Proprietary internal tools | TypeScript modules baked into the app | **File-based skills** that follow Claude Code's `SKILL.md` spec — forkable, versionable, shareable, installable by symlink |
 | 4 | How design systems are authored | Implicit in prompt | N/A | **`DESIGN.md` files** following the [awesome-claude-design][acd] 9-section schema |
 | 5 | Extension point | Anthropic only | Custom PRs | **Drop a folder into `skills/`** — composable by third parties |
 
-The differentiation is not "yet another design generator." It is **an integration shell that refuses to own the agent, the model, or the skill catalog** — all three are external and pluggable.
+The differentiation is not "yet another design generator." It is **a local-first design workspace where the daemon owns the runtime boundary, Pi owns the coding-agent loop, and skills/design systems stay file-based and forkable.**
 
 ## 3. Target users
 
@@ -47,7 +47,7 @@ The differentiation is not "yet another design generator." It is **an integratio
 ## 4. User scenarios
 
 ### S1 — "Give me a prototype"
-User opens the web app, types *"Airbnb-style search page, use our internal design system"*, OD picks the `prototype-skill`, resolves the user's `DESIGN.md`, dispatches to Claude Code with both files plus the brief, streams tool calls into the UI, and renders the resulting HTML in an iframe preview. User clicks an element, drops a comment, the agent rewrites just that region.
+User opens the web app, types *"Airbnb-style search page, use our internal design system"*, OD picks the `prototype-skill`, resolves the user's `DESIGN.md`, dispatches to the daemon-hosted Pi runtime with both files plus the brief, streams tool calls into the UI, and renders the resulting HTML in an iframe preview. User clicks an element, drops a comment, and the agent rewrites the relevant file.
 
 ### S2 — "Make me a deck"
 User says *"8-slide magazine-style pitch deck for my seed round"*. OD routes to `deck-skill` (a fork of [`guizang-ppt-skill`][guizang]). Output is a single-file HTML deck; preview is the deck itself with arrow-key navigation; export is PDF/PPTX.
@@ -70,23 +70,22 @@ These four scenarios map 1:1 to the four modes in [`modes.md`](modes.md).
              │ HTTP + SSE (/api/chat)          │ HTTPS (BYOK direct)
 ┌────────────▼──────────────────┐     ┌────────▼─────────────────┐
 │   Local Daemon (od daemon)   │     │   Anthropic Messages API │
-│   · agent detection           │     │   (fallback when no CLI) │
+│   · Pi agent runtime          │     │   (BYOK provider proxy)  │
 │   · skill registry            │     └──────────────────────────┘
 │   · artifact store            │
 │   · design-system resolver    │
 └────────────┬──────────────────┘
-             │ spawn / stdio / SDK
+             │ Pi SDK / worker queue
 ┌────────────▼──────────────────────────────────────────────────┐
-│  Code Agent CLIs on user's machine (one or more of):          │
-│  Claude Code · Codex · Cursor Agent · Gemini CLI · OpenCode   │
+│  Pi AgentSession + ProjectFs + just-bash sandbox              │
 └───────────────────────────────────────────────────────────────┘
 ```
 
 Module responsibilities:
 
 - **Web app** — chat UI, artifact tree, sandboxed iframe preview, comment mode, slider controls, export UI. Stateless; all state lives in the daemon or in the browser's IndexedDB for cloud deploys.
-- **Daemon** — long-running local process. Detects agents, registers skills, manages artifacts on disk, resolves the active design system, and brokers REST/SSE requests.
-- **Agent adapters** — one adapter per supported CLI; see [`agent-adapters.md`](agent-adapters.md).
+- **Daemon** — long-running local or clustered Node service. Hosts Pi, registers skills, manages artifacts on disk, resolves the active design system, and brokers REST/SSE requests.
+- **Agent runtime** — Pi SDK plus `AgentRuntime`/worker boundary; see [`agent-runtime.md`](agent-runtime.md).
 - **Skill registry** — scans `~/.claude/skills/`, `./skills/`, and `./.claude/skills/`; merges and exposes a typed catalog.
 - **Artifact store** — project-scoped folder (default `./.od/`) holding generated files, version snapshots (git-friendly), and per-artifact metadata.
 - **Design-system resolver** — loads the active `DESIGN.md`, injects it as skill context.
@@ -130,13 +129,13 @@ In short: Claude Design is a product; OD is a **substrate**.
 - A third party can author a skill in a separate git repo, publish it, and have a user install it by running `od skill add <git-url>` without touching OD's source.
 - A design system author can write a `DESIGN.md`, point OD at it, and have the style propagate across prototype / deck / template outputs.
 - Deploying to Vercel with a local daemon works end-to-end (the daemon is reachable via localhost tunnel or a user-provided URL).
-- Swapping the underlying agent from Claude Code to Codex requires zero skill changes.
+- Moving from inline daemon execution to worker-cluster execution requires zero skill changes.
 
 ## 10. Open questions (to resolve before coding)
 
 - **Daemon ↔ Vercel bridge.** Do we ship a reverse-tunnel helper (like `cloudflared`), require the user to set one up, or punt to "run locally for now"? My current lean: punt for MVP, helper in v1.
 - **Artifact versioning.** Git, or SQLite, or both? [Open CoDesign][ocod] uses SQLite; that's easier but less reviewable. Lean: write artifacts as plain files + a `.od/history.jsonl` log. Git is the user's business.
-- **Comment mode on non-Claude-Code agents.** Claude Code supports surgical edits via its tool loop. Codex and Gemini CLI are less graceful. Do we degrade to "regenerate whole file" for weaker agents? Lean: yes, document clearly in the adapter table.
-- **Skill trust model.** Skills can shell out via the agent. We should at minimum warn on install, and probably sandbox the agent's cwd to the project directory. Claude Code's permission mode handles this for us if we use it; Codex is looser. Needs a per-adapter note.
+- **Comment mode precision.** Pi can edit files through the project tools, but comment-to-region accuracy still depends on stable element ids and skill discipline.
+- **Skill trust model.** Skills can ask the agent to shell out. The current runtime limits shell and file tools to the project filesystem through `ProjectFs` and `just-bash`; remote filesystem providers remain a roadmap item.
 
 These go on the roadmap as Phase 0 discovery items.

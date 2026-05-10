@@ -14,7 +14,6 @@ import {
   persistConfigAndRunOrbit,
   switchApiProtocolConfig,
   testStatusVariant,
-  updateAgentCliEnvValue,
   updateCurrentApiProtocolConfig,
 } from '../../src/components/SettingsDialog';
 import type { AppConfig, ConnectionTestResponse } from '../../src/types';
@@ -301,102 +300,19 @@ describe('SettingsDialog API Base URL validation', () => {
   });
 });
 
-describe('SettingsDialog agent CLI env settings', () => {
-  it('updates supported per-agent CLI env values without dropping sibling agents', () => {
+describe('SettingsDialog agent refresh options', () => {
+  it('refreshes the embedded Pi runtime without local CLI env overrides', () => {
     const config: AppConfig = {
       ...baseConfig,
       mode: 'daemon',
-      agentCliEnv: {
-        codex: { CODEX_HOME: '~/.codex-alt' },
-      },
-    };
-
-    const next = updateAgentCliEnvValue(
-      config,
-      'claude',
-      'CLAUDE_CONFIG_DIR',
-      '  ~/.claude-2  ',
-    );
-
-    expect(next.agentCliEnv).toEqual({
-      claude: { CLAUDE_CONFIG_DIR: '~/.claude-2' },
-      codex: { CODEX_HOME: '~/.codex-alt' },
-    });
-  });
-
-  it('updates additional Codex CLI env values without dropping sibling Codex fields', () => {
-    const config: AppConfig = {
-      ...baseConfig,
-      mode: 'daemon',
-      agentCliEnv: {
-        codex: { CODEX_HOME: '~/.codex-alt' },
-      },
-    };
-
-    const next = updateAgentCliEnvValue(
-      config,
-      'codex',
-      'CODEX_BIN',
-      '  ~/bin/codex-next  ',
-    );
-
-    expect(next.agentCliEnv).toEqual({
-      codex: { CODEX_HOME: '~/.codex-alt', CODEX_BIN: '~/bin/codex-next' },
-    });
-  });
-
-  it('removes empty per-agent CLI env entries', () => {
-    const config: AppConfig = {
-      ...baseConfig,
-      mode: 'daemon',
-      agentCliEnv: {
-        claude: { CLAUDE_CONFIG_DIR: '~/.claude-2' },
-        codex: { CODEX_HOME: '~/.codex-alt' },
-      },
-    };
-
-    const next = updateAgentCliEnvValue(
-      config,
-      'claude',
-      'CLAUDE_CONFIG_DIR',
-      '',
-    );
-
-    expect(next.agentCliEnv).toEqual({
-      codex: { CODEX_HOME: '~/.codex-alt' },
-    });
-  });
-
-  it('passes pending CLI env prefs through agent rescan options', () => {
-    const config: AppConfig = {
-      ...baseConfig,
-      mode: 'daemon',
-      agentCliEnv: {
-        claude: { CLAUDE_CONFIG_DIR: '~/.claude-pending' },
-      },
     };
 
     expect(agentRefreshOptionsForConfig(config)).toEqual({
       throwOnError: true,
-      agentCliEnv: {
-        claude: { CLAUDE_CONFIG_DIR: '~/.claude-pending' },
-      },
-    });
-  });
-
-  it('passes an empty CLI env object through agent rescan after fields are cleared', () => {
-    const config: AppConfig = {
-      ...baseConfig,
-      mode: 'daemon',
-      agentCliEnv: {},
-    };
-
-    expect(agentRefreshOptionsForConfig(config)).toEqual({
-      throwOnError: true,
-      agentCliEnv: {},
     });
   });
 });
+
 
 describe('deriveComposioCredentialState', () => {
   // Issue #741: when a Composio API key is already saved and the user
@@ -828,7 +744,6 @@ describe('sanitizeSettingsSavePayload', () => {
     baseUrl: 'https://api.anthropic.com',
     model: 'claude-sonnet-4-5',
     agentId: 'claude-code',
-    agentCliEnv: { claude: { CLAUDE_CONFIG_DIR: '~/.claude' } },
     maxTokens: 8000,
   };
 
@@ -864,7 +779,6 @@ describe('sanitizeSettingsSavePayload', () => {
     expect(sanitized.baseUrl).toBe('https://api.anthropic.com');
     expect(sanitized.model).toBe('claude-sonnet-4-5');
     expect(sanitized.agentId).toBe('claude-code');
-    expect(sanitized.agentCliEnv).toEqual({ claude: { CLAUDE_CONFIG_DIR: '~/.claude' } });
     expect(sanitized.maxTokens).toBe(8000);
 
     // The non-execution change (theme) is preserved:

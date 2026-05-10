@@ -542,18 +542,12 @@ export function App() {
   );
 
   const refreshAgents = useCallback(
-    async (options?: { throwOnError?: boolean; agentCliEnv?: AppConfig['agentCliEnv'] }) => {
-      if (options && Object.prototype.hasOwnProperty.call(options, 'agentCliEnv')) {
-        const nextConfig = { ...config, agentCliEnv: options.agentCliEnv ?? {} };
-        saveConfig(nextConfig);
-        await syncConfigToDaemon(nextConfig);
-        setConfig(nextConfig);
-      }
+    async (options?: { throwOnError?: boolean }) => {
       const next = await fetchAgents({ throwOnError: options?.throwOnError });
       setAgents(next);
       return next;
     },
-    [config],
+    [],
   );
 
   const handleCreateProject = useCallback(
@@ -697,12 +691,6 @@ export function App() {
     setSettingsOpen(true);
   }, []);
 
-  const openMcpSettings = useCallback(() => {
-    setSettingsWelcome(false);
-    setSettingsInitialSection('mcpClient');
-    setSettingsOpen(true);
-  }, []);
-
   // Explicit enabled toggle — true = wake, false = tuck. Persists to
   // localStorage so the overlay state survives across reloads. We keep
   // `adopted` untouched so the entry-view CTA does not regress to
@@ -787,7 +775,6 @@ export function App() {
           onAgentModelChange={handleAgentModelChange}
           onRefreshAgents={refreshAgents}
           onOpenSettings={openSettings}
-          onOpenMcpSettings={openMcpSettings}
           onAdoptPetInline={handleAdoptPet}
           onTogglePet={handleTogglePet}
           onOpenPetSettings={openPetSettings}

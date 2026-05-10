@@ -26,6 +26,16 @@ The new shape follows the same direction as Flue's headless agent harness: the a
 See [`cluster-deployment.md`](cluster-deployment.md) for the worker, queue,
 event-store, and storage rollout plan.
 
+## Cluster Filesystem Posture
+
+The production cluster profile still uses a local, volume-backed `ProjectFs`.
+API and worker containers mount the same project/data volume, and Pi tools are
+rooted under the selected project directory through `ReadWriteFs({ root })`.
+Linked folders and uploads are resolved by daemon-side allowlists before they
+become prompt context or image attachments. GitHub-backed filesystems,
+AgentFS-style layers, object storage, and Mirage-style remote workspaces remain
+roadmap items; they are not part of this deployment closure.
+
 ## Authentication And Configuration
 
 Pi owns provider authentication. Users can authenticate through Pi's normal mechanisms:

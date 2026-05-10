@@ -71,16 +71,12 @@ describe('syncConfigToDaemon', () => {
     vi.stubGlobal('fetch', originalFetch);
   });
 
-  it('syncs per-agent CLI env prefs to the daemon app config', async () => {
+  it('syncs app preferences to the daemon app config', async () => {
     const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
     await syncConfigToDaemon({
       ...DEFAULT_CONFIG,
-      agentCliEnv: {
-        claude: { CLAUDE_CONFIG_DIR: '~/.claude-2' },
-        codex: { CODEX_HOME: '~/.codex-alt', CODEX_BIN: '~/bin/codex-next' },
-      },
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -97,10 +93,6 @@ describe('syncConfigToDaemon', () => {
       agentModels: DEFAULT_CONFIG.agentModels,
       skillId: DEFAULT_CONFIG.skillId,
       designSystemId: DEFAULT_CONFIG.designSystemId,
-      agentCliEnv: {
-        claude: { CLAUDE_CONFIG_DIR: '~/.claude-2' },
-        codex: { CODEX_HOME: '~/.codex-alt', CODEX_BIN: '~/bin/codex-next' },
-      },
     });
   });
 
@@ -143,43 +135,6 @@ describe('syncMediaProvidersToDaemon', () => {
 });
 
 describe('mergeDaemonConfig', () => {
-  it('clears stale local CLI env prefs when the daemon has none', () => {
-    const merged = mergeDaemonConfig(
-      {
-        ...DEFAULT_CONFIG,
-        agentCliEnv: {
-          claude: { CLAUDE_CONFIG_DIR: '~/.claude-old' },
-        },
-      },
-      {
-        agentId: 'codex',
-      },
-    );
-
-    expect(merged.agentId).toBe('codex');
-    expect(merged.agentCliEnv).toEqual({});
-  });
-
-  it('uses daemon CLI env prefs instead of merging with stale local entries', () => {
-    const merged = mergeDaemonConfig(
-      {
-        ...DEFAULT_CONFIG,
-        agentCliEnv: {
-          claude: { CLAUDE_CONFIG_DIR: '~/.claude-old' },
-        },
-      },
-      {
-        agentCliEnv: {
-          codex: { CODEX_HOME: '~/.codex-new', CODEX_BIN: '~/bin/codex-new' },
-        },
-      },
-    );
-
-    expect(merged.agentCliEnv).toEqual({
-      codex: { CODEX_HOME: '~/.codex-new', CODEX_BIN: '~/bin/codex-new' },
-    });
-  });
-
   it('copies privacyDecisionAt from daemon config', () => {
     const merged = mergeDaemonConfig(DEFAULT_CONFIG, {
       installationId: 'install-1',
