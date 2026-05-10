@@ -31,7 +31,7 @@ import { listCodexPets, readCodexPetSpritesheet } from './codex-pets.js';
 import { syncCommunityPets } from './community-pets-sync.js';
 import { listDesignSystems, readDesignSystem } from './design-systems.js';
 import { createAgentRuntimeFromEnv } from './agent-runtime.js';
-import { createLocalProjectFs, describeProjectFsForPrompt } from './project-fs.js';
+import { createLocalProjectFs } from './project-fs.js';
 import { loadCritiqueConfigFromEnv } from './critique/config.js';
 import { reconcileStaleRuns } from './critique/persistence.js';
 import { runOrchestrator } from './critique/orchestrator.js';
@@ -5182,7 +5182,7 @@ export async function startServer({
     })();
     const projectFs = createLocalProjectFs(cwd ?? PROJECT_ROOT);
     const cwdHint = cwd
-      ? `\n\nYour working directory: ${describeProjectFsForPrompt(projectFs)}\nWrite project files relative to it (e.g. \`index.html\`, \`assets/x.png\`). The user can browse those files in real time.${filesListBlock}`
+      ? `\n\nYour working directory is the Open Design project root. File and shell tools are sandboxed there; use project-relative paths only (e.g. \`index.html\`, \`assets/x.png\`, or \`.od-skills/<skill>/...\`). The user can browse those files in real time.${filesListBlock}`
       : '';
     const linkedDirsHint = linkedDirs.length > 0
       ? `\n\nLinked code folders (read-only reference code the user wants you to see):\n${
@@ -5217,28 +5217,11 @@ export async function startServer({
         designSystemId,
       });
 
-    // Make skill side files reachable through three layers, in order of
-    // preference. The skill preamble emitted by `withSkillRootPreamble()`
-    // advertises both the cwd-relative path (1) and the absolute path
-    // (2/3) so the agent can pick whichever works.
-    //
-    //   1. CWD-relative copy. Stage the *active* skill into
-    //      `<cwd>/.od-skills/<folder>/` so any agent CLI — not just the
-    //      ones that honour `--add-dir` — can reach those files via a
-    //      path inside its working directory. We copy (not symlink) so
-    //      the staged directory is a true write barrier — agents cannot
-    //      mutate the shipped repo resource through their cwd.
-    //   2. `--add-dir` allowlist. For non-Codex agents, pass `SKILLS_DIR`
-    //      and `DESIGN_SYSTEMS_DIR` so the absolute fallback path in the
-    //      preamble is reachable when staging fails (e.g. the project has
-    //      no on-disk cwd, or fs.cp errored). Codex treats `--add-dir`
-    //      entries as writable, so Codex receives only the narrow
-    //      `${CODEX_HOME:-$HOME/.codex}/generated_images` output folder
-    //      for allowlisted gpt-image image projects.
-    //   3. PROJECT_ROOT cwd. When `cwd` is null, the agent runs with
-    //      `cwd: PROJECT_ROOT` — there the absolute path is already an
-    //      in-cwd path, so neither (1) nor (2) is required for it to
-    //      resolve.
+    // Make skill side files reachable through a project-relative copy.
+    // The skill preamble emitted by `withSkillRootPreamble()` advertises
+    // `.od-skills/<folder>/...`; absolute repository paths are not exposed
+    // to the Pi runtime because file and shell tools are intentionally
+    // rooted to the project directory.
     //
     // Design systems are *not* staged here. Their bodies are read by the
     // daemon and folded into the system prompt directly (see

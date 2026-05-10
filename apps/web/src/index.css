@@ -10530,6 +10530,12 @@ button.connector-action.is-loading {
   box-shadow: none;
   opacity: 0.92;
 }
+.question-form-pending {
+  box-shadow: none;
+}
+.question-form-pending .question-form-head {
+  background: var(--bg-panel);
+}
 .question-form-head {
   display: flex;
   align-items: center;
@@ -10585,6 +10591,16 @@ button.connector-action.is-loading {
   flex-direction: column;
   gap: 14px;
   padding: 14px;
+}
+.qf-pending-line {
+  height: 14px;
+  width: 100%;
+  max-width: 360px;
+  border-radius: 999px;
+}
+.qf-pending-line-short {
+  width: 58%;
+  max-width: 220px;
 }
 .qf-field { display: flex; flex-direction: column; gap: 6px; }
 .qf-label {

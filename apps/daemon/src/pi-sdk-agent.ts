@@ -103,10 +103,45 @@ function envForJustBash(env, sandboxCwd) {
   return next;
 }
 
+class ProjectToolPathError extends Error {
+  constructor() {
+    super('Path is outside this Open Design project. Use project-relative paths such as `index.html`, `assets/file.png`, or `.od-skills/<skill>/...`.');
+    this.name = 'ProjectToolPathError';
+  }
+}
+
+function displayProjectPath(projectFs, absPath) {
+  const resolved = path.resolve(String(absPath || projectFs.root));
+  if (resolved === projectFs.root) return '.';
+  if (resolved.startsWith(projectFs.root + path.sep)) {
+    return path.relative(projectFs.root, resolved).split(path.sep).join('/');
+  }
+  return '(outside project)';
+}
+
 function resolveProjectToolPath(projectFs, cwd, absolutePath) {
-  const resolved = path.resolve(String(absolutePath || cwd || projectFs.root));
-  if (projectFs.contains(resolved)) return resolved;
-  return projectFs.resolvePath(resolved.replace(/^[/\\]+/, ''));
+  const raw = typeof absolutePath === 'string' && absolutePath.trim()
+    ? absolutePath.trim()
+    : cwd || projectFs.root;
+  if (path.isAbsolute(raw)) {
+    const resolved = path.resolve(raw);
+    if (projectFs.contains(resolved)) return resolved;
+    throw new ProjectToolPathError();
+  }
+  return projectFs.resolvePath(raw);
+}
+
+async function wrapProjectFileOperation(projectFs, target, operation) {
+  try {
+    return await operation();
+  } catch (err) {
+    if (err instanceof ProjectToolPathError) throw err;
+    const code = err?.code;
+    if (code === 'ENOENT') {
+      throw new Error(`Project file not found: ${displayProjectPath(projectFs, target)}`);
+    }
+    throw err;
+  }
 }
 
 function summarizePiModel(model) {
@@ -156,14 +191,22 @@ function createProjectFileToolDefinitions(
   },
 ) {
   const readFile = async (absolutePath) =>
-    fs.promises.readFile(resolveProjectToolPath(projectFs, cwd, absolutePath));
+    wrapProjectFileOperation(projectFs, absolutePath, () =>
+      fs.promises.readFile(resolveProjectToolPath(projectFs, cwd, absolutePath)),
+    );
   const writeFile = async (absolutePath, content) =>
-    fs.promises.writeFile(resolveProjectToolPath(projectFs, cwd, absolutePath), content, 'utf8');
+    wrapProjectFileOperation(projectFs, absolutePath, () =>
+      fs.promises.writeFile(resolveProjectToolPath(projectFs, cwd, absolutePath), content, 'utf8'),
+    );
   const access = async (absolutePath) => {
-    await fs.promises.access(resolveProjectToolPath(projectFs, cwd, absolutePath));
+    await wrapProjectFileOperation(projectFs, absolutePath, () =>
+      fs.promises.access(resolveProjectToolPath(projectFs, cwd, absolutePath)),
+    );
   };
   const mkdir = async (dir) => {
-    await fs.promises.mkdir(resolveProjectToolPath(projectFs, cwd, dir), { recursive: true });
+    await wrapProjectFileOperation(projectFs, dir, () =>
+      fs.promises.mkdir(resolveProjectToolPath(projectFs, cwd, dir), { recursive: true }),
+    );
   };
   const detectImageMimeType = async (absolutePath) => {
     const ext = path.extname(resolveProjectToolPath(projectFs, cwd, absolutePath)).toLowerCase();

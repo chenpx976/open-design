@@ -451,9 +451,19 @@ function ProseBlock({
       | { key: string; kind: "text"; text: string }
       | { key: string; kind: "reminder"; text: string }
       | { key: string; kind: "form"; form: QuestionForm }
+      | { key: string; kind: "pending-form"; id: string; title: string; description?: string }
     > => {
       if (seg.kind === "form") {
         return [{ key: `f-${idx}`, kind: "form", form: seg.form }];
+      }
+      if (seg.kind === "pending-form") {
+        return [{
+          key: `pf-${idx}`,
+          kind: "pending-form",
+          id: seg.id,
+          title: seg.title,
+          description: seg.description,
+        }];
       }
       if (seg.text.trim().length === 0) return [];
       const sub = splitSystemReminders(seg.text);
@@ -474,6 +484,15 @@ function ProseBlock({
         if (seg.kind === "text") {
           return <Fragment key={seg.key}>{renderMarkdown(seg.text)}</Fragment>;
         }
+        if (seg.kind === "pending-form") {
+          return (
+            <PendingQuestionForm
+              key={seg.key}
+              title={seg.title}
+              description={seg.description}
+            />
+          );
+        }
         return (
           <FormBlock
             key={seg.key}
@@ -486,6 +505,30 @@ function ProseBlock({
           />
         );
       })}
+    </div>
+  );
+}
+
+function PendingQuestionForm({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="question-form question-form-pending" aria-live="polite">
+      <div className="question-form-head">
+        <span className="question-form-icon" aria-hidden>?</span>
+        <div className="question-form-titles">
+          <div className="question-form-title">{title}</div>
+          {description ? <div className="question-form-desc">{description}</div> : null}
+        </div>
+      </div>
+      <div className="question-form-body">
+        <div className="qf-pending-line skeleton-shimmer" />
+        <div className="qf-pending-line qf-pending-line-short skeleton-shimmer" />
+      </div>
     </div>
   );
 }

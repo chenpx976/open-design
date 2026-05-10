@@ -77,7 +77,8 @@ export interface QuestionForm {
 
 export type FormSegment =
   | { kind: 'text'; text: string }
-  | { kind: 'form'; form: QuestionForm; raw: string };
+  | { kind: 'form'; form: QuestionForm; raw: string }
+  | { kind: 'pending-form'; id: string; title: string; description?: string };
 
 const OPEN_RE = /<question-form\b([^>]*)>/i;
 const CLOSE_TAG = '</question-form>';
@@ -99,8 +100,22 @@ export function splitOnQuestionForms(input: string): FormSegment[] {
     const openEnd = openStart + m[0].length;
     const closeIdx = input.indexOf(CLOSE_TAG, openEnd);
     if (closeIdx === -1) {
-      // Unterminated — leave the rest as prose so we don't swallow it.
-      out.push({ kind: 'text', text: slice });
+      if (openStart > cursor) {
+        out.push({ kind: 'text', text: input.slice(cursor, openStart) });
+      }
+      const attrs = parseAttrs(m[1] ?? '');
+      const partialBody = input.slice(openEnd);
+      const partial = tryParseForm(partialBody, attrs);
+      if (partial) {
+        out.push({ kind: 'form', form: partial, raw: input.slice(openStart) });
+      } else {
+        out.push({
+          kind: 'pending-form',
+          id: attrs.id ?? 'pending',
+          title: attrs.title ?? inferPartialTitle(partialBody) ?? 'Preparing questions',
+          ...(inferPartialDescription(partialBody) ? { description: inferPartialDescription(partialBody)! } : {}),
+        });
+      }
       break;
     }
     if (openStart > cursor) {
@@ -118,6 +133,16 @@ export function splitOnQuestionForms(input: string): FormSegment[] {
     cursor = closeIdx + CLOSE_TAG.length;
   }
   return out;
+}
+
+function inferPartialTitle(body: string): string | null {
+  const m = /"title"\s*:\s*"([^"]{1,120})"/.exec(body);
+  return m?.[1] ?? null;
+}
+
+function inferPartialDescription(body: string): string | null {
+  const m = /"description"\s*:\s*"([^"]{1,180})"/.exec(body);
+  return m?.[1] ?? null;
 }
 
 function parseAttrs(raw: string): Record<string, string> {
