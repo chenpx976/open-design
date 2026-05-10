@@ -665,10 +665,11 @@ function ToolGroupCard({
   onRequestOpenFile?: (name: string) => void;
 }) {
   const t = useT();
-  const [open, setOpen] = useState(Boolean(runStreaming));
+  const shouldStayOpen = runStreaming || groupHasMaterialResult(items);
+  const [open, setOpen] = useState(shouldStayOpen);
   useEffect(() => {
-    if (runStreaming) setOpen(true);
-  }, [runStreaming]);
+    if (shouldStayOpen) setOpen(true);
+  }, [shouldStayOpen]);
 
   // A run of one tool collapses to that tool's card directly so we don't
   // wrap a single child in a redundant disclosure.
@@ -722,6 +723,13 @@ function ToolGroupCard({
   );
 }
 
+function groupHasMaterialResult(items: ToolItem[]): boolean {
+  return items.some((it) => {
+    const family = toolFamily(it.use.name);
+    return family === "write" || family === "edit" || it.result?.isError;
+  });
+}
+
 function summarizeGroup(
   items: ToolItem[],
   t: (k: keyof Dict, vars?: Record<string, string | number>) => string
@@ -740,16 +748,17 @@ function summarizeGroup(
 }
 
 function toolFamily(name: string): string {
-  if (name === "Edit" || name === "str_replace_edit") return "edit";
-  if (name === "Write" || name === "create_file") return "write";
-  if (name === "Read" || name === "read_file") return "read";
-  if (name === "Glob" || name === "list_files") return "glob";
-  if (name === "Grep") return "grep";
-  if (name === "Bash") return "bash";
-  if (name === "TodoWrite") return "todo";
-  if (name === "WebFetch" || name === "web_fetch") return "fetch";
-  if (name === "WebSearch" || name === "web_search") return "search";
-  return name.toLowerCase();
+  const lower = name.toLowerCase();
+  if (lower === "edit" || lower === "str_replace_edit") return "edit";
+  if (lower === "write" || lower === "create_file") return "write";
+  if (lower === "read" || lower === "read_file") return "read";
+  if (lower === "glob" || lower === "list_files") return "glob";
+  if (lower === "grep") return "grep";
+  if (lower === "bash") return "bash";
+  if (lower === "todowrite" || lower === "todo_write") return "todo";
+  if (lower === "webfetch" || lower === "web_fetch") return "fetch";
+  if (lower === "websearch" || lower === "web_search") return "search";
+  return lower;
 }
 
 function familyIcon(family: string): string {

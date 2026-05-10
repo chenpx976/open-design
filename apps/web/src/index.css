@@ -9553,6 +9553,19 @@ button.connector-action.is-loading {
   border-color: var(--accent);
   color: var(--accent);
 }
+.op-result-preview {
+  margin: 0;
+  padding: 0 12px 8px 42px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.action-card-body > .op-card .op-result-preview {
+  padding-left: 30px;
+}
 
 .produced-files {
   margin-top: 4px;

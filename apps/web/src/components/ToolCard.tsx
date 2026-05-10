@@ -152,6 +152,7 @@ function FileWriteCard({
         <ResultBadge result={result} runStreaming={runStreaming} />
         <OpenInTabButton filePath={file} ctx={ctx} />
       </div>
+      <ToolResultPreview result={result} />
     </div>
   );
 }
@@ -189,6 +190,7 @@ function FileEditCard({
         <ResultBadge result={result} runStreaming={runStreaming} />
         <OpenInTabButton filePath={file} ctx={ctx} />
       </div>
+      <ToolResultPreview result={result} />
     </div>
   );
 }
@@ -385,6 +387,12 @@ function ResultBadge({ result, runStreaming }: { result?: Props['result']; runSt
   }
   if (result.isError) return <span className="op-status op-status-error">{t('tool.error')}</span>;
   return <span className="op-status op-status-ok">{t('tool.done')}</span>;
+}
+
+function ToolResultPreview({ result }: { result?: Props['result'] }) {
+  const content = result?.content?.trim();
+  if (!content) return null;
+  return <pre className="op-result-preview">{truncate(content, 600)}</pre>;
 }
 
 function describeInput(input: unknown): string {

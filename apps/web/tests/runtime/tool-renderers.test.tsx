@@ -137,6 +137,18 @@ describe('ToolCard dispatch', () => {
     expect(markup).toContain('ls');
   });
 
+  it('surfaces lowercase Pi write result summaries in the built-in card', () => {
+    const markup = renderToStaticMarkup(
+      <ToolCard
+        use={use({ path: 'index.html' }, 'write')}
+        result={ok('Successfully wrote 1200 bytes to index.html')}
+        runStreaming={false}
+      />,
+    );
+    expect(markup).toContain('op-result-preview');
+    expect(markup).toContain('Successfully wrote 1200 bytes to index.html');
+  });
+
   it('lets a registered renderer override a built-in family card', () => {
     registerToolRenderer('Bash', ({ args }) => (
       <pre data-testid="custom-bash">{(args as { command?: string }).command}</pre>

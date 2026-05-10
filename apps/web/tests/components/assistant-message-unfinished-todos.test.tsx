@@ -164,4 +164,46 @@ describe('AssistantMessage unfinished todo state', () => {
     expect(screen.getByText('new cumulative output')).toBeTruthy();
     expect(screen.queryByText('old partial only')).toBeNull();
   });
+
+  it('keeps completed lowercase Pi write groups expanded', () => {
+    render(
+      <AssistantMessage
+        message={messageWithEvents([
+          {
+            kind: 'tool_use',
+            id: 'write-1',
+            name: 'write',
+            input: { path: 'index.html' },
+          },
+          {
+            kind: 'tool_result',
+            toolUseId: 'write-1',
+            content: 'Successfully wrote 1200 bytes to index.html',
+            isError: false,
+          },
+          {
+            kind: 'tool_use',
+            id: 'write-2',
+            name: 'write',
+            input: { path: 'styles.css' },
+          },
+          {
+            kind: 'tool_result',
+            toolUseId: 'write-2',
+            content: 'Successfully wrote 400 bytes to styles.css',
+            isError: false,
+          },
+        ])}
+        streaming={false}
+        projectId="project-1"
+        isLast
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: /Writing ×2, done/ }).getAttribute('aria-expanded'),
+    ).toBe('true');
+    expect(screen.getByText('index.html')).toBeTruthy();
+    expect(screen.getByText('styles.css')).toBeTruthy();
+  });
 });
